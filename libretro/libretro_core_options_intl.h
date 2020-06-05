@@ -376,7 +376,7 @@ struct retro_core_option_definition option_defs_chs[] = {
    {
       "genesis_plus_gx_system_hw",
       "系统硬件",
-      "以指定的模拟硬件运行载入的游戏，'自动'会根据当前游戏选择最合适的系统。",
+      "以指定的模拟硬件运行游戏，'自动'会根据当前游戏选择最合适的系统。",
       {
          { "auto",                 "自动"               },
          { "sg-1000",              "SG-1000"            },
@@ -393,7 +393,7 @@ struct retro_core_option_definition option_defs_chs[] = {
    {
       "genesis_plus_gx_region_detect",
       "系统制式",
-      "指定系统区域制式。除Game Gear外，'PAL'是50hz而'NTSC'是60hz。\n"
+      "指定系统区域制式，除Game Gear外。'PAL'是50hz而'NTSC'是60hz。\n"
       "如果选择了不正确的制式，游戏可能比正常运行速度偏快或者偏慢。",
       {
          { "auto",    "自动"   },
@@ -408,7 +408,7 @@ struct retro_core_option_definition option_defs_chs[] = {
       "genesis_plus_gx_force_dtack",
       "系统锁定",
       "模拟真实硬件上执行非法地址访问时发生的系统锁定。\n"
-      "此设置应该只在运行特定演示或者自制游戏时关闭，这些游戏可能依赖非法行为来完成操作。",
+      "此设置应该只在运行特定演示或者自制游戏时关闭，这些游戏可能依赖非法指令来完成操作。",
       {
          { "enabled",  "启用" },
          { "disabled", "禁用" },
@@ -419,7 +419,7 @@ struct retro_core_option_definition option_defs_chs[] = {
    {
       "genesis_plus_gx_bios",
       "系统启动ROM",
-      "使用官方BIOS/启动器加载器，如果在RetroArch系统目录中存在的话。\n"
+      "使用官方BIOS/引导程序，如果在RetroArch系统目录中存在的话。\n"
       "显示机种特定启动动画，然后运行载入的游戏。",
       {
          { "disabled", "禁用" },
@@ -621,7 +621,7 @@ struct retro_core_option_definition option_defs_chs[] = {
       "启用音频低通滤镜，以更好地模拟MD1型机的声音特性。",
       {
          { "disabled", "禁用" },
-         { "low-pass", "Low-Pass" },
+         { "low-pass", "低通滤镜" },
          { NULL, NULL },
       },
       "disabled"
