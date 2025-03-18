@@ -2,7 +2,7 @@
  *  Genesis Plus
  *  CD drive processor & CD-DA fader
  *
- *  Copyright (C) 2012-2018  Eke-Eke (Genesis Plus GX)
+ *  Copyright (C) 2012-2024  Eke-Eke (Genesis Plus GX)
  *
  *  Redistribution and use of this code or any derivative works are permitted
  *  provided that the following conditions are met:
@@ -54,15 +54,21 @@
 #define cdd scd.cdd_hw
 
 /* CDD status */
-#define CD_BUSY  0x00
-#define CD_PLAY  0x01
-#define CD_SEEK  0x02
-#define CD_SCAN  0x03
-#define CD_PAUSE 0x04
-#define CD_OPEN  0x05
-#define CD_STOP  0x09
-#define NO_DISC  0x0B
-#define CD_END   0x0C
+#define CD_STOP       0x00
+#define CD_PLAY       0x01
+#define CD_SEEK       0x02
+#define CD_SCAN       0x03
+#define CD_PAUSE      0x04
+#define CD_OPEN       0x05
+#define NO_VALID_CHK  0x06  /* unused */
+#define NO_VALID_CMD  0x07  /* unused */
+#define CD_ERROR      0x08  /* unused */
+#define CD_TOC        0x09
+#define CD_TRACK_MOVE 0x0A  /* unused */
+#define NO_DISC       0x0B
+#define CD_END        0x0C
+#define CD_TRAY       0x0E  /* unused */
+#define CD_TEST       0x0F  /* unusec */
 
 /* CD track */
 typedef struct
@@ -75,6 +81,8 @@ typedef struct
   int start;
   int end;
   int type;
+  int loopEnabled;
+  int loopOffset;
 } track_t; 
 
 /* CD TOC */
@@ -107,26 +115,28 @@ typedef struct
   int index;
   int lba;
   int scanOffset;
-  int volume;
+  uint16 fader[2];
   uint8 status;
+  uint8 pending;
   uint16 sectorSize;
   toc_t toc;
 #if defined(USE_LIBCHDR)
   chd_t chd;
 #endif
   int16 audio[2];
-  int audioSampleOffset;
 } cdd_t; 
 
 /* Function prototypes */
 extern void cdd_init(int samplerate);
 extern void cdd_reset(void);
 extern int cdd_context_save(uint8 *state);
-extern int cdd_context_load(uint8 *state);
+extern int cdd_context_load(uint8 *state, char *version);
 extern int cdd_load(char *filename, char *header);
 extern void cdd_unload(void);
 extern void cdd_read_data(uint8 *dst, uint8 *subheader);
+extern void cdd_seek_audio(int index, int lba);
 extern void cdd_read_audio(unsigned int samples);
+extern void cdd_update_audio(unsigned int samples);
 extern void cdd_update(void);
 extern void cdd_process(void);
 

@@ -3,7 +3,7 @@
  *
  *  Genesis Plus GX
  *
- *  Copyright Eke-Eke (2007-2014), based on original work from Softdev (2006)
+ *  Copyright Eke-Eke (2007-2022), based on original work from Softdev (2006)
  *
  *  Redistribution and use of this code or any derivative works are permitted
  *  provided that the following conditions are met:
@@ -49,11 +49,12 @@
 #include "md_ntsc.h"
 
 #include <fat.h>
+#include <sys/stat.h>
 
 #ifdef HW_RVL
 #include <iso9660.h>
+#include <sdcard/wiisd_io.h>
 #include <ogc/usbmouse.h>
-extern bool sdio_Deinitialize();
 extern void USBStorage_Deinitialize();
 #endif
 
@@ -281,6 +282,11 @@ void reloadrom(void)
     config.hot_swap |= 2;
   }
 
+  /* Initialize CPU overclock ratio */
+  m68k.cycle_ratio = (100 << M68K_OVERCLOCK_SHIFT) / (int)(config.m68k_overclock * 100.0);
+  s68k.cycle_ratio = (100 << M68K_OVERCLOCK_SHIFT) / (int)(config.s68k_overclock * 100.0);
+  z80_cycle_ratio  = (100 << Z80_OVERCLOCK_SHIFT) / (int)(config.z80_overclock * 100.0);
+
   /* Auto-Load Backup RAM */
   slot_autoload(0,config.s_device);
             
@@ -318,9 +324,10 @@ void shutdown(void)
 
   /* shutdown all devices */
   DI_Close();
-  sdio_Deinitialize();
+  __io_wiisd.shutdown();
   USBStorage_Deinitialize();
   MOUSE_Deinit();
+  USB_Deinitialize();
 #endif
 }
 
@@ -330,7 +337,7 @@ void shutdown(void)
  ***************************************************************************/
 int main (int argc, char *argv[])
 {
- #ifdef HW_RVL
+#ifdef HW_RVL
   /* enable 64-byte fetch mode for L2 cache */
   L2Enhance();
   
@@ -373,6 +380,15 @@ int main (int argc, char *argv[])
 
   if (fatMounted)
   {
+#ifdef HW_RVL
+    /* workaround against regression introduced in newlib 2.5.0 (and later versions) causing crash when loaded from Wiiflow (or any apploader passing "usb1:/", "usb2:/", etc in application path) */
+    if ((argc > 0) && !strncasecmp(argv[0], "usb", 3))
+    {
+      /* set default path using exact device name mounted by libfat */
+      chdir("usb:/");
+    }
+#endif
+
     /* base directory */
     char pathname[MAXPATHLEN];
     sprintf (pathname, DEFAULT_PATH);
@@ -550,7 +566,7 @@ int main (int argc, char *argv[])
 #endif
 
   /* RESET button callback */
-  SYS_SetResetCallback(Reset_cb);
+  SYS_SetResetCallback((resetcallback)Reset_cb);
 
   /* main emulation loop */
   run_emulation();

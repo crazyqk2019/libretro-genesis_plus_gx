@@ -2,7 +2,7 @@
  *  Genesis Plus
  *  Mega CD / Sega CD hardware
  *
- *  Copyright (C) 2012-2019  Eke-Eke (Genesis Plus GX)
+ *  Copyright (C) 2012-2024  Eke-Eke (Genesis Plus GX)
  *
  *  Redistribution and use of this code or any derivative works are permitted
  *  provided that the following conditions are met:
@@ -76,11 +76,52 @@ static void s68k_unused_16_w(unsigned int address, unsigned int data)
 }
 
 /*--------------------------------------------------------------------------*/
+/* Locked area (cause SUB-CPU to wait for /DTACK assertion)    */
+/*--------------------------------------------------------------------------*/
+
+static void s68k_lockup_w_8 (unsigned int address, unsigned int data)
+{
+#ifdef LOGERROR
+  error ("[SUB 68k] Lockup write8 %08X = %02X (%08X)\n", address, data, s68k.pc);
+#endif
+  s68k_pulse_wait(address, 1);
+}
+
+static void s68k_lockup_w_16 (unsigned int address, unsigned int data)
+{
+#ifdef LOGERROR
+  error ("[SUB 68k] Lockup write16 %08X = %04X (%08X)\n", address, data, s68k.pc);
+#endif
+  s68k_pulse_wait(address, 1);
+}
+
+static unsigned int s68k_lockup_r_8 (unsigned int address)
+{ 
+#ifdef LOGERROR
+  error ("[SUB 68k] Lockup read8 %08X.b (%08X)\n", address, s68k.pc);
+#endif
+  s68k_pulse_wait(address, 0);
+  return 0xff;
+}
+
+static unsigned int s68k_lockup_r_16 (unsigned int address)
+{
+#ifdef LOGERROR
+  error ("[SUB 68k] Lockup read16 %08X.w (%08X)\n", address, s68k.pc);
+#endif
+  s68k_pulse_wait(address, 0);
+  return 0xffff;
+}
+
+/*--------------------------------------------------------------------------*/
 /* PRG-RAM DMA access                                                       */
 /*--------------------------------------------------------------------------*/
-void prg_ram_dma_w(unsigned int words)
+void prg_ram_dma_w(unsigned int length)
 {
   uint16 data;
+
+  /* 16-bit DMA only */
+  unsigned int words = length >> 1;
 
   /* CDC buffer source address */
   uint16 src_index = cdc.dac.w & 0x3ffe;
@@ -93,12 +134,6 @@ void prg_ram_dma_w(unsigned int words)
 
   /* update DMA source address */
   cdc.dac.w += (words << 1);
-
-  /* check PRG-RAM write protected area */
-  if (dst_index < (scd.regs[0x02>>1].byte.h << 9))
-  {
-    return;
-  }
 
   /* DMA transfer */
   while (words--)
@@ -410,11 +445,11 @@ static void s68k_poll_detect(unsigned int reg_mask)
         if (s68k.poll.detected & 1)
         {
           /* idle SUB-CPU until register is modified */
-          s68k.cycles = s68k.cycle_end;
-          s68k.stopped = reg_mask;
 #ifdef LOG_SCD
           error("s68k stopped from %d cycles\n", s68k.cycles);
 #endif
+          s68k.cycles = s68k.cycle_end;
+          s68k.stopped = reg_mask;
         }
         else
         {
@@ -442,10 +477,16 @@ static void s68k_poll_sync(unsigned int reg_mask)
   /* relative MAIN-CPU cycle counter */
   unsigned int cycles = (s68k.cycles * MCYCLES_PER_LINE) / SCYCLES_PER_LINE;
 
-  /* sync MAIN-CPU with SUB-CPU */
   if (!m68k.stopped)
   {
+    /* save current MAIN-CPU end cycle count (recursive execution is possible) */
+    int end_cycle = m68k.cycle_end;
+
+    /* sync MAIN-CPU with SUB-CPU */
     m68k_run(cycles);
+
+    /* restore MAIN-CPU end cycle count */
+    m68k.cycle_end = end_cycle;
   }
 
   /* MAIN-CPU idle on register polling ? */
@@ -466,6 +507,24 @@ static void s68k_poll_sync(unsigned int reg_mask)
   m68k.poll.detected &= ~reg_mask;
 }
 
+static void m68k_sync(void)
+{
+  if (!m68k.stopped)
+  {
+    /* relative MAIN-CPU cycle counter */
+    unsigned int cycles = (s68k.cycles * MCYCLES_PER_LINE) / SCYCLES_PER_LINE;
+
+    /* save current MAIN-CPU end cycle count (recursive execution is possible) */
+    int end_cycle = m68k.cycle_end;
+
+    /* sync MAIN-CPU with SUB-CPU */
+    m68k_run(cycles);
+
+    /* restore MAIN-CPU end cycle count */
+    m68k.cycle_end = end_cycle;
+  }
+}
+
 /*--------------------------------------------------------------------------*/
 /* PCM chip & Gate-Array area                                               */
 /*--------------------------------------------------------------------------*/
@@ -478,7 +537,7 @@ static unsigned int scd_read_byte(unsigned int address)
     /* get /LDS only */
     if (address & 1)
     {
-      return pcm_read((address >> 1) & 0x1fff);
+      return pcm_read((address >> 1) & 0x1fff, s68k.cycles);
     }
 
     return s68k_read_bus_8(address);
@@ -495,7 +554,9 @@ static unsigned int scd_read_byte(unsigned int address)
   if (address == 0x03)
   {
     s68k_poll_detect(1<<0x03);
-    return scd.regs[0x03>>1].byte.l;
+
+    /* mask BK0 and BK1 bits on SUB-CPU side */
+    return scd.regs[0x03>>1].byte.l & 0x1f;
   }
 
   /* MAIN-CPU communication flags */
@@ -519,14 +580,10 @@ static unsigned int scd_read_byte(unsigned int address)
     return scd.regs[0x58>>1].byte.h;
   }
 
-  /* CDC register data (controlled by BIOS, byte access only ?) */
+  /* CDC register data */
   if (address == 0x07)
   {
-    unsigned int data = cdc_reg_r();
-#ifdef LOG_CDC
-    error("CDC register %X read 0x%02X (%X)\n", scd.regs[0x04>>1].byte.l & 0x0F, data, s68k.pc);
-#endif
-    return data;
+    return cdc_reg_r();
   }
 
   /* LED status */
@@ -544,7 +601,7 @@ static unsigned int scd_read_byte(unsigned int address)
   }
 
   /* Font data */
-  if ((address >= 0x50) && (address <= 0x56))
+  if ((address >= 0x50) && (address <= 0x57))
   {
     /* shifted 4-bit input (xxxx00) */
     uint8 bits = (scd.regs[0x4e>>1].w >> (((address & 6) ^ 6) << 1)) << 2;
@@ -597,7 +654,7 @@ static unsigned int scd_read_word(unsigned int address)
   if (!(address & 0x8000))
   {
     /* get /LDS only */
-    return pcm_read((address >> 1) & 0x1fff);
+    return pcm_read((address >> 1) & 0x1fff, s68k.cycles);
   }
 
 #ifdef LOG_SCD
@@ -611,13 +668,15 @@ static unsigned int scd_read_word(unsigned int address)
   if (address == 0x02)
   {
     s68k_poll_detect(1<<0x03);
-    return scd.regs[0x03>>1].w;
+
+    /* mask BK0 and BK1 bits on SUB-CPU side */
+    return scd.regs[0x03>>1].w & 0xff1f;
   }
 
   /* CDC host data (word access only ?) */
   if (address == 0x08)
   {
-    return cdc_host_r();
+    return cdc_host_r(CDC_SUB_CPU_ACCESS);
   }
 
   /* LED & RESET status */
@@ -658,18 +717,17 @@ static unsigned int scd_read_word(unsigned int address)
     return data;
   }
 
+  /* CDC register data */
+  if (address == 0x06)
+  {
+    return cdc_reg_r();
+  }
+
   /* MAIN-CPU communication words */
   if ((address & 0x1f0) == 0x10)
   {
-    if (!m68k.stopped)
-    {
-      /* relative MAIN-CPU cycle counter */
-      unsigned int cycles = (s68k.cycles * MCYCLES_PER_LINE) / SCYCLES_PER_LINE;
-
-      /* sync MAIN-CPU with SUB-CPU (Mighty Morphin Power Rangers) */
-      m68k_run(cycles);
-    }
-
+    /* sync MAIN-CPU with SUB-CPU (fixes Mighty Morphin Power Rangers) */
+    m68k_sync();
     s68k_poll_detect(3 << (address & 0x1e));
   }
 
@@ -699,6 +757,26 @@ INLINE void word_ram_switch(uint8 mode)
       *ptr2++=*ptr1++;
       *ptr3++=*ptr1++;
     }
+
+    /* MAIN-CPU: $200000-$21FFFF is mapped to Word-RAM 0 or 1 */
+    for (i=scd.cartridge.boot+0x20; i<scd.cartridge.boot+0x22; i++)
+    {
+      m68k.memory_map[i].read8   = NULL;
+      m68k.memory_map[i].read16  = NULL;
+      m68k.memory_map[i].write8  = NULL;
+      m68k.memory_map[i].write16 = NULL;
+      zbank_memory_map[i].read   = NULL;
+      zbank_memory_map[i].write  = NULL;
+    }
+
+    /* SUB-CPU: $0C0000-$0DFFFF is mapped to Word-RAM 0 or 1 */
+    for (i=0x0c; i<0x0e; i++)
+    {
+      s68k.memory_map[i].read8   = NULL;
+      s68k.memory_map[i].read16  = NULL;
+      s68k.memory_map[i].write8  = NULL;
+      s68k.memory_map[i].write16 = NULL;
+    }
   }
   else
   {
@@ -715,26 +793,6 @@ INLINE void word_ram_switch(uint8 mode)
       m68k.memory_map[i].base = scd.word_ram_2M + ((i & 0x03) << 16);
     }
 
-    /* MAIN-CPU: $220000-$23FFFF is mapped to 256K Word-RAM (upper 128K) */
-    for (i=scd.cartridge.boot+0x22; i<scd.cartridge.boot+0x24; i++)
-    {
-      m68k.memory_map[i].read8   = NULL;
-      m68k.memory_map[i].read16  = NULL;
-      m68k.memory_map[i].write8  = NULL;
-      m68k.memory_map[i].write16 = NULL;
-      zbank_memory_map[i].read   = NULL;
-      zbank_memory_map[i].write  = NULL;
-    }
-
-    /* SUB-CPU: $080000-$0BFFFF is mapped to 256K Word-RAM */
-    for (i=0x08; i<0x0c; i++)
-    {
-      s68k.memory_map[i].read8   = NULL;
-      s68k.memory_map[i].read16  = NULL;
-      s68k.memory_map[i].write8  = NULL;
-      s68k.memory_map[i].write16 = NULL;
-    }
-
     /* SUB-CPU: $0C0000-$0DFFFF is unmapped */
     for (i=0x0c; i<0x0e; i++)
     {
@@ -746,6 +804,8 @@ INLINE void word_ram_switch(uint8 mode)
   }
 }
 
+static void scd_write_word(unsigned int address, unsigned int data);
+
 static void scd_write_byte(unsigned int address, unsigned int data)
 {
   /* PCM area (8K) mirrored into $xF0000-$xF7FFF */
@@ -754,7 +814,7 @@ static void scd_write_byte(unsigned int address, unsigned int data)
     /* get /LDS only */
     if (address & 1)
     {
-      pcm_write((address >> 1) & 0x1fff, data);
+      pcm_write((address >> 1) & 0x1fff, data, s68k.cycles);
       return;
     }
 
@@ -778,7 +838,7 @@ static void scd_write_byte(unsigned int address, unsigned int data)
 
     case 0x01: /* RESET status */
     {
-      /* RESET bit cleared ? */      
+      /* RESET bit cleared ? */
       if (!(data & 0x01))
       {
         /* reset CD hardware */
@@ -788,6 +848,7 @@ static void scd_write_byte(unsigned int address, unsigned int data)
     }
 
     case 0x03: /* Memory Mode */
+    case 0x02: /* !LDS and !UDS are ignored (verified on real hardware, cf. Krikzz's mcd-verificator) */
     {
       s68k_poll_sync(1<<0x03);
 
@@ -840,11 +901,7 @@ static void scd_write_byte(unsigned int address, unsigned int data)
             for (i=0x0c; i<0x0e; i++)
             {
               /* Word-RAM 0 data mapped at $0C0000-$0DFFFF */
-              s68k.memory_map[i].base    = scd.word_ram[0] + ((i & 0x01) << 16);
-              s68k.memory_map[i].read8   = NULL;
-              s68k.memory_map[i].read16  = NULL;
-              s68k.memory_map[i].write8  = NULL;
-              s68k.memory_map[i].write16 = NULL;
+              s68k.memory_map[i].base = scd.word_ram[0] + ((i & 0x01) << 16);
             }
 
             /* writing 1 to RET bit in 1M mode returns Word-RAM to MAIN-CPU in 2M mode */
@@ -883,11 +940,7 @@ static void scd_write_byte(unsigned int address, unsigned int data)
             for (i=0x0c; i<0x0e; i++)
             {
               /* Word-RAM 1 data mapped at $0C0000-$0DFFFF */
-              s68k.memory_map[i].base    = scd.word_ram[1] + ((i & 0x01) << 16);
-              s68k.memory_map[i].read8   = NULL;
-              s68k.memory_map[i].read16  = NULL;
-              s68k.memory_map[i].write8  = NULL;
-              s68k.memory_map[i].write16 = NULL;
+              s68k.memory_map[i].base = scd.word_ram[1] + ((i & 0x01) << 16);
             }
           }
 
@@ -909,6 +962,26 @@ static void scd_write_byte(unsigned int address, unsigned int data)
             /* check if RET bit is cleared */
             if (!(data & 0x01))
             {
+              /* MAIN-CPU: $200000-$23FFFF is unmapped */
+              for (i=scd.cartridge.boot+0x20; i<scd.cartridge.boot+0x24; i++)
+              {
+                m68k.memory_map[i].read8   = m68k_read_bus_8;
+                m68k.memory_map[i].read16  = m68k_read_bus_16;
+                m68k.memory_map[i].write8  = m68k_unused_8_w;
+                m68k.memory_map[i].write16 = m68k_unused_16_w;
+                zbank_memory_map[i].read   = zbank_unused_r;
+                zbank_memory_map[i].write  = zbank_unused_w;
+              }
+
+              /* SUB-CPU: access to Word-RAM in $08FFFF-$0BFFFF is unlocked (/DTACK asserted) */
+              for (i=0x08; i<0x0c; i++)
+              {
+                s68k.memory_map[i].read8   = NULL;
+                s68k.memory_map[i].read16  = NULL;
+                s68k.memory_map[i].write8  = NULL;
+                s68k.memory_map[i].write16 = NULL;
+              }
+
               /* set DMNA bit */
               data |= 0x02;
 
@@ -921,8 +994,46 @@ static void scd_write_byte(unsigned int address, unsigned int data)
           /* RET bit set in 2M mode */
           if (data & 0x01)
           {
+            /* check if graphics operation is running */
+            if (scd.regs[0x58>>1].byte.h & 0x80)
+            {
+              /* synchronize GFX processing with SUB-CPU */
+              gfx_update(s68k.cycles);
+            }
+
+            /* check if CDC DMA to 2M Word-RAM is running */
+            if (cdc.dma_w == word_ram_2M_dma_w)
+            {
+              /* synchronize CDC DMA with SUB-CPU */
+              cdc_dma_update(s68k.cycles);
+
+              /* halt CDC DMA to 2M Word-RAM (if still running) */
+              cdc.halted_dma_w = cdc.dma_w;
+              cdc.dma_w = 0;
+            }
+
             /* Word-RAM is returned to MAIN-CPU */
             scd.dmna = 0;
+
+            /* MAIN-CPU: $200000-$23FFFF is mapped to Word-RAM */
+            for (i=scd.cartridge.boot+0x20; i<scd.cartridge.boot+0x24; i++)
+            {
+              m68k.memory_map[i].read8   = NULL;
+              m68k.memory_map[i].read16  = NULL;
+              m68k.memory_map[i].write8  = NULL;
+              m68k.memory_map[i].write16 = NULL;
+              zbank_memory_map[i].read   = NULL;
+              zbank_memory_map[i].write  = NULL;
+            }
+
+            /* SUB-CPU: access to Word-RAM in $08FFFF-$0BFFFF is locked (/DTACK not asserted) */
+            for (i=0x08; i<0x0c; i++)
+            {
+              s68k.memory_map[i].read8   = s68k_lockup_r_8;
+              s68k.memory_map[i].read16  = s68k_lockup_r_16;
+              s68k.memory_map[i].write8  = s68k_lockup_w_8;
+              s68k.memory_map[i].write16 = s68k_lockup_w_16;
+            }
 
             /* clear DMNA bit */
             scd.regs[0x02 >> 1].byte.l = (scd.regs[0x02 >> 1].byte.l & ~0x1f) | (data & 0x1d);
@@ -936,14 +1047,38 @@ static void scd_write_byte(unsigned int address, unsigned int data)
       return;
     }
 
+    case 0x04: /* CDC mode */
+    {
+      scd.regs[0x04 >> 1].byte.h = data & 0x07;
+
+      /* synchronize CDC DMA (if running) with SUB-CPU */
+      if (cdc.dma_w)
+      {
+        cdc_dma_update(s68k.cycles);
+      }
+
+      /* reinitialize CDC data transfer destination (verified on real hardware, cf. Krikzz's mcd-verificator) */
+      cdc_dma_init();
+
+      /* reset CDC DMA address (verified on real hardware, cf. Krikzz's mcd-verificator) */
+      scd.regs[0x0a >> 1].w = 0;
+      return;
+    }
+
+    case 0x05: /* CDC register address */
+    {
+      scd.regs[0x04 >> 1].byte.l = data & cdc.ar_mask;
+      return;
+    }
+
     case 0x07: /* CDC register write */
     {
       cdc_reg_w(data);
       return;
     }
 
-    case 0x0e:  /* SUB-CPU communication flags */
-    case 0x0f:  /* !LWR is ignored (Space Ace, Dragon's Lair) */
+    case 0x0f:  /* SUB-CPU communication flags */
+    case 0x0e:  /* !LDS and !UDS are ignored (verified on real hardware, cf. Krikzz's mcd-verificator, Space Ace, Dragon's Lair) */
     {
       s68k_poll_sync(1<<0x0f);
       scd.regs[0x0f>>1].byte.l = data;
@@ -951,6 +1086,7 @@ static void scd_write_byte(unsigned int address, unsigned int data)
     }
 
     case 0x31: /* Timer */
+    case 0x30: /* !LDS and !UDS are ignored (verified on real hardware, cf. Krikzz's mcd-verificator) */
     {
       /* reload timer (one timer clock = 384 CPU cycles) */
       scd.timer = data * TIMERS_SCYCLES_RATIO;
@@ -982,40 +1118,36 @@ static void scd_write_byte(unsigned int address, unsigned int data)
       return;
     }
 
-    case 0x37: /* CDD control (controlled by BIOS, byte access only ?) */
+    case 0x4d: /* Font Color */
+    case 0x4c: /* !LDS and !UDS are ignored (verified on real hardware, cf. Krikzz's mcd-verificator) */
     {
-      /* CDD communication started ? */
-      if ((data & 0x04) && !(scd.regs[0x37>>1].byte.l & 0x04))
-      {
-        /* reset CDD cycle counter */
-        cdd.cycles = (scd.cycles - s68k.cycles) * 3;
-
-        /* set pending interrupt level 4 */
-        scd.pending |= (1 << 4);
-
-        /* update IRQ level if interrupt is enabled */
-        if (scd.regs[0x32>>1].byte.l & 0x10)
-        {
-          s68k_update_irq((scd.pending & scd.regs[0x32>>1].byte.l) >> 1);
-        }
-      }
-
-      scd.regs[0x37>>1].byte.l = data;
-      return;
+       scd.regs[0x4c>>1].byte.l = data;
+       break;
     }
 
     default:
     {
+      uint16 reg_16 = address & 0x1fe;
+
       /* SUB-CPU communication words */
-      if ((address & 0x1f0) == 0x20)
+      if ((reg_16 >= 0x20) && (reg_16 <= 0x2f))
       {
         s68k_poll_sync(1 << ((address - 0x10) & 0x1f));
       }
 
       /* MAIN-CPU communication words */
-      else if ((address & 0x1f0) == 0x10)
+      else if ((reg_16 >= 0x10) && (reg_16 <= 0x1f))
       {
         /* read-only (Sega Classic Arcade Collection) */
+        return;
+      }
+
+      /* word-only registers */
+      else if (((reg_16 >= 0x08) && (reg_16 <= 0x0d)) ||
+               ((reg_16 >= 0x34) && (reg_16 <= 0x35)) ||
+               ((reg_16 >= 0x5a) && (reg_16 <= 0x67)))
+      {
+        scd_write_word(address, (data << 8) | (data & 0xff));
         return;
       }
 
@@ -1023,12 +1155,12 @@ static void scd_write_byte(unsigned int address, unsigned int data)
       if (address & 1)
       {
         /* register LSB */
-        scd.regs[(address >> 1) & 0xff].byte.l = data;
+        scd.regs[reg_16 >> 1].byte.l = data;
         return;
       }
 
       /* register MSB */
-      scd.regs[(address >> 1) & 0xff].byte.h = data;
+      scd.regs[reg_16 >> 1].byte.h = data;
       return;
     }
   }
@@ -1040,7 +1172,7 @@ static void scd_write_word(unsigned int address, unsigned int data)
   if (!(address & 0x8000))
   {
     /* get /LDS only */
-    pcm_write((address >> 1) & 0x1fff, data);
+    pcm_write((address >> 1) & 0x1fff, data & 0xff, s68k.cycles);
     return;
   }
 
@@ -1056,7 +1188,7 @@ static void scd_write_word(unsigned int address, unsigned int data)
       /* only update LED status (register $00 is reserved for MAIN-CPU, use $06 instead) */
       scd.regs[0x06>>1].byte.h = data >> 8;
 
-      /* RESET bit cleared ? */      
+      /* RESET bit cleared ? */
       if (!(data & 0x01))
       {
         /* reset CD hardware */
@@ -1118,11 +1250,7 @@ static void scd_write_word(unsigned int address, unsigned int data)
             for (i=0x0c; i<0x0e; i++)
             {
               /* Word-RAM 0 data mapped at $0C0000-$0DFFFF */
-              s68k.memory_map[i].base    = scd.word_ram[0] + ((i & 0x01) << 16);
-              s68k.memory_map[i].read8   = NULL;
-              s68k.memory_map[i].read16  = NULL;
-              s68k.memory_map[i].write8  = NULL;
-              s68k.memory_map[i].write16 = NULL;
+              s68k.memory_map[i].base = scd.word_ram[0] + ((i & 0x01) << 16);
             }
 
             /* writing 1 to RET bit in 1M mode returns Word-RAM to MAIN-CPU in 2M mode */
@@ -1161,11 +1289,7 @@ static void scd_write_word(unsigned int address, unsigned int data)
             for (i=0x0c; i<0x0e; i++)
             {
               /* Word-RAM 1 data mapped at $0C0000-$0DFFFF */
-              s68k.memory_map[i].base    = scd.word_ram[1] + ((i & 0x01) << 16);
-              s68k.memory_map[i].read8   = NULL;
-              s68k.memory_map[i].read16  = NULL;
-              s68k.memory_map[i].write8  = NULL;
-              s68k.memory_map[i].write16 = NULL;
+              s68k.memory_map[i].base = scd.word_ram[1] + ((i & 0x01) << 16);
             }
           }
 
@@ -1187,6 +1311,26 @@ static void scd_write_word(unsigned int address, unsigned int data)
             /* check if RET bit is cleared */
             if (!(data & 0x01))
             {
+              /* MAIN-CPU: $200000-$23FFFF is unmapped */
+              for (i=scd.cartridge.boot+0x20; i<scd.cartridge.boot+0x24; i++)
+              {
+                m68k.memory_map[i].read8   = m68k_read_bus_8;
+                m68k.memory_map[i].read16  = m68k_read_bus_16;
+                m68k.memory_map[i].write8  = m68k_unused_8_w;
+                m68k.memory_map[i].write16 = m68k_unused_16_w;
+                zbank_memory_map[i].read   = zbank_unused_r;
+                zbank_memory_map[i].write  = zbank_unused_w;
+              }
+
+              /* SUB-CPU: access to Word-RAM in $08FFFF-$0BFFFF is unlocked (/DTACK asserted) */
+              for (i=0x08; i<0x0c; i++)
+              {
+                s68k.memory_map[i].read8   = NULL;
+                s68k.memory_map[i].read16  = NULL;
+                s68k.memory_map[i].write8  = NULL;
+                s68k.memory_map[i].write16 = NULL;
+              }
+
               /* set DMNA bit */
               data |= 0x02;
 
@@ -1199,8 +1343,46 @@ static void scd_write_word(unsigned int address, unsigned int data)
           /* RET bit set in 2M mode */
           if (data & 0x01)
           {
+            /* check if graphics operation is running */
+            if (scd.regs[0x58>>1].byte.h & 0x80)
+            {
+              /* synchronize GFX processing with SUB-CPU */
+              gfx_update(s68k.cycles);
+            }
+
+            /* check if CDC DMA to 2M Word-RAM is running */
+            if (cdc.dma_w == word_ram_2M_dma_w)
+            {
+              /* synchronize CDC DMA with SUB-CPU */
+              cdc_dma_update(s68k.cycles);
+
+              /* halt CDC DMA to 2M Word-RAM (if still running) */
+              cdc.halted_dma_w = cdc.dma_w;
+              cdc.dma_w = 0;
+            }
+
             /* Word-RAM is returned to MAIN-CPU */
             scd.dmna = 0;
+
+            /* MAIN-CPU: $200000-$23FFFF is mapped to Word-RAM */
+            for (i=scd.cartridge.boot+0x20; i<scd.cartridge.boot+0x24; i++)
+            {
+              m68k.memory_map[i].read8   = NULL;
+              m68k.memory_map[i].read16  = NULL;
+              m68k.memory_map[i].write8  = NULL;
+              m68k.memory_map[i].write16 = NULL;
+              zbank_memory_map[i].read   = NULL;
+              zbank_memory_map[i].write  = NULL;
+            }
+
+            /* SUB-CPU: access to Word-RAM in $08FFFF-$0BFFFF is locked (/DTACK not asserted) */
+            for (i=0x08; i<0x0c; i++)
+            {
+              s68k.memory_map[i].read8   = s68k_lockup_r_8;
+              s68k.memory_map[i].read16  = s68k_lockup_r_16;
+              s68k.memory_map[i].write8  = s68k_lockup_w_8;
+              s68k.memory_map[i].write16 = s68k_lockup_w_16;
+            }
 
             /* clear DMNA bit */
             scd.regs[0x03>>1].byte.l = (scd.regs[0x03>>1].byte.l & ~0x1f) | (data & 0x1d);
@@ -1214,13 +1396,38 @@ static void scd_write_word(unsigned int address, unsigned int data)
       return;
     }
 
+    case 0x04: /* CDC mode & register address */
+    {
+      scd.regs[0x04 >> 1].w = data & (0x0700 | cdc.ar_mask);
+
+      /* synchronize CDC DMA (if running) with SUB-CPU */
+      if (cdc.dma_w)
+      {
+        cdc_dma_update(s68k.cycles);
+      }
+
+      /* reinitialize CDC data transfer destination (verified on real hardware, cf. Krikzz's mcd-verificator) */
+      cdc_dma_init();
+
+      /* reset CDC DMA address (verified on real hardware, cf. Krikzz's mcd-verificator) */
+      scd.regs[0x0a >> 1].w = 0;
+      return;
+    }
+
     case 0x06: /* CDC register write */
     {
       cdc_reg_w(data);
       return;
     }
 
-    case 0x0c: /* Stopwatch (word access only) */
+    case 0x08: /* CDC host data */
+    {
+      /* CDC data is also read (although unused) on write access (verified on real hardware, cf. Krikzz's mcd-verificator) */
+      cdc_host_r(CDC_SUB_CPU_ACCESS);
+      return;
+    }
+
+    case 0x0c: /* Stopwatch */
     {
       /* synchronize the counter with SUB-CPU */
       int ticks = (s68k.cycles - scd.stopwatch) / TIMERS_SCYCLES_RATIO;
@@ -1275,6 +1482,53 @@ static void scd_write_word(unsigned int address, unsigned int data)
 
       /* update IRQ level */
       s68k_update_irq((scd.pending & data) >> 1);
+      return;
+    }
+
+    case 0x34: /* CD Fader */
+    {
+      /* Wondermega hardware (CXD2554M digital filter) */
+      if (scd.type == CD_TYPE_WONDERMEGA)
+      {
+        /* only MSB is latched by CXD2554M chip, LSB is ignored (8-bit digital filter) */
+        /* attenuator data is 7-bit only (bits 0-7) */
+        data = (data >> 8) & 0x7f;
+
+        /* scale CXD2554M volume (0-127) to full (LC7883KM compatible) volume range (0-1024) */
+        cdd.fader[1] = (1024 * data) / 127 ;
+      }
+
+      /* Wondermega M2 / X'Eye hardware (SM5841A digital filter) */
+      else if (scd.type == CD_TYPE_WONDERMEGA_M2)
+      {
+        /* only MSB is latched by SM5841A chip, LSB is ignored (8-bit digital filter) */
+        data = data >> 8;
+
+        /* attenuator data is set only when command bit (bit 0) is cleared (other commands are ignored) */
+        if (data & 0x01) return;
+
+        /* attenuator data is 7-bit only (bits 8-1) and reverted (bit 1 = msb) */
+        /* bit reversing formula taken from http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith32Bits */
+        data = (((((data * 0x0802) & 0x22110) | ((data * 0x8020) & 0x88440)) * 0x10101) >> 16) & 0x7f;
+
+        /* convert & scale SM5841A attenuation (127-0) to full (LC7883KM compatible) volume range (0-1024) */
+        cdd.fader[1] = (1024 * (127 - data)) / 127 ;
+      }
+
+      /* default CD hardware (LC7883KM digital filter) */
+      else
+      {
+        /* get LC7883KM volume data (12-bit) */
+        cdd.fader[1] = data >> 4 ;
+      }
+
+      return;
+    }
+
+    case 0x36: /* CDD control */
+    {
+      /* only bit 2 is writable (bits [1:0] forced to 0 by default) */
+      scd.regs[0x37>>1].byte.l = data & 0x04;
       return;
     }
 
@@ -1350,7 +1604,7 @@ void scd_init(void)
         m68k.memory_map[i].write8  = m68k_unused_8_w;
         m68k.memory_map[i].write16 = m68k_unused_16_w;
         zbank_memory_map[i].read   = NULL;
-        zbank_memory_map[i].write  = zbank_unused_w;        
+        zbank_memory_map[i].write  = zbank_unused_w;
         break;
       }
 
@@ -1457,10 +1711,11 @@ void scd_init(void)
         }
         else
         {
-          s68k.memory_map[i].read8   = NULL;
-          s68k.memory_map[i].read16  = NULL;
-          s68k.memory_map[i].write8  = NULL;
-          s68k.memory_map[i].write16 = NULL;
+          /* access to Word-RAM in $08FFFF-$0BFFFF is locked by default (/DTACK not asserted) */
+          s68k.memory_map[i].read8   = s68k_lockup_r_8;
+          s68k.memory_map[i].read16  = s68k_lockup_r_16;
+          s68k.memory_map[i].write8  = s68k_lockup_w_8;
+          s68k.memory_map[i].write16 = s68k_lockup_w_16;
         }
         break;
       }
@@ -1532,9 +1787,10 @@ void scd_init(void)
 
 void scd_reset(int hard)
 {
-  /* TODO: figure what exactly is resetted when RESET bit is cleared by SUB-CPU */
   if (hard)
   {
+    int i;
+
     /* Clear all ASIC registers by default */
     memset(scd.regs, 0, sizeof(scd.regs));
 
@@ -1542,7 +1798,7 @@ void scd_reset(int hard)
     scd.dmna = 0;
 
     /* H-INT default vector */
-    *(uint16 *)(m68k.memory_map[scd.cartridge.boot].base + 0x70) = 0x00FF;
+    *(uint16 *)(m68k.memory_map[scd.cartridge.boot].base + 0x70) = 0xFFFF;
     *(uint16 *)(m68k.memory_map[scd.cartridge.boot].base + 0x72) = 0xFFFF;
 
     /* Power ON initial values (MAIN-CPU side) */
@@ -1551,6 +1807,26 @@ void scd_reset(int hard)
 
     /* 2M mode */
     word_ram_switch(0);
+
+    /* MAIN-CPU access to Word-RAM at $200000-$23FFFF is enabled on reset */
+    for (i=scd.cartridge.boot+0x20; i<scd.cartridge.boot+0x24; i++)
+    {
+      m68k.memory_map[i].read8   = NULL;
+      m68k.memory_map[i].read16  = NULL;
+      m68k.memory_map[i].write8  = NULL;
+      m68k.memory_map[i].write16 = NULL;
+      zbank_memory_map[i].read   = NULL;
+      zbank_memory_map[i].write  = NULL;
+    }
+
+    /* SUB-CPU access to Word-RAM at $08FFFF-$0BFFFF is locked on reset (/DTACK not asserted) */
+    for (i=0x08; i<0x0c; i++)
+    {
+      s68k.memory_map[i].read8   = s68k_lockup_r_8;
+      s68k.memory_map[i].read16  = s68k_lockup_r_16;
+      s68k.memory_map[i].write8  = s68k_lockup_w_8;
+      s68k.memory_map[i].write16 = s68k_lockup_w_16;
+    }
 
     /* reset PRG-RAM bank on MAIN-CPU side */
     m68k.memory_map[scd.cartridge.boot + 0x02].base = scd.prg_ram;
@@ -1574,11 +1850,17 @@ void scd_reset(int hard)
     s68k.cycles = 0;
     s68k_pulse_reset();
     s68k_pulse_halt();
+
+    /* Reset frame cycle counter */
+    scd.cycles = 0;
   }
   else
   {
-    /* Clear only SUB-CPU side registers */
-    memset(&scd.regs[0x04>>1], 0, sizeof(scd.regs) - 4);
+    /* TODO: figure what exactly is reset when RESET bit is cleared by SUB-CPU */
+    /* Clear only SUB-CPU side registers (communication registers are not cleared, see msu-md-sample.bin) */
+    scd.regs[0x04>>1].w = 0x0000;
+    scd.regs[0x0c>>1].w = 0x0000;
+    memset(&scd.regs[0x30>>1], 0, sizeof(scd.regs) - 0x30);
   }
 
   /* SUB-CPU side default values */
@@ -1597,10 +1879,7 @@ void scd_reset(int hard)
 
   /* Reset Timer & Stopwatch counters */
   scd.timer = 0;
-  scd.stopwatch = 0;
-
-  /* Reset frame cycle counter */
-  scd.cycles = 0;
+  scd.stopwatch = s68k.cycles;
 
   /* Clear pending interrupts */
   scd.pending = 0;
@@ -1608,6 +1887,9 @@ void scd_reset(int hard)
   /* Clear CPU polling detection */
   memset(&m68k.poll, 0, sizeof(m68k.poll));
   memset(&s68k.poll, 0, sizeof(s68k.poll));
+
+  /* reset CDD cycle counter */
+  cdd.cycles = (scd.cycles - s68k.cycles) * 3;
 
   /* Reset CD hardware */
   cdd_reset();
@@ -1618,77 +1900,94 @@ void scd_reset(int hard)
 
 void scd_update(unsigned int cycles)
 {
-  /* update CDC DMA transfer */
-  if (cdc.dma_w)
-  {
-    cdc_dma_update();
-  }
+  int m68k_end_cycles;
+  int s68k_run_cycles;
+  int s68k_end_cycles = scd.cycles + SCYCLES_PER_LINE;
 
   /* run both CPU in sync until end of line */
   do
   {
-    m68k_run(cycles);
-    s68k_run(scd.cycles + SCYCLES_PER_LINE);
-  }
-  while ((m68k.cycles < cycles) || (s68k.cycles < (scd.cycles + SCYCLES_PER_LINE)));
+    /* CD hardware remaining cycles until end of line */
+    s68k_run_cycles = s68k_end_cycles - scd.cycles;
 
-  /* increment CD hardware cycle counter */
-  scd.cycles += SCYCLES_PER_LINE;
-
-  /* CDD processing at 75Hz (one clock = 12500000/75 = 500000/3 CPU clocks) */
-  cdd.cycles += (SCYCLES_PER_LINE * 3);
-  if (cdd.cycles >= (500000 * 4))
-  {
-    /* reload CDD cycle counter */
-    cdd.cycles -= (500000 * 4);
-
-    /* update CDD sector */
-    cdd_update();
-
-    /* check if a new CDD command has been processed */
-    if (!(scd.regs[0x4a>>1].byte.l & 0xf0))
+    /* check Timer interrupt occurence */
+    if ((scd.timer > 0) && (scd.timer < s68k_run_cycles))
     {
-      /* reset CDD command wait flag */
-      scd.regs[0x4a>>1].byte.l = 0xf0;
+      /* adjust Sub-CPU and Main-CPU end cycle counters up to Timer interrupt occurence */
+      s68k_run_cycles = scd.timer;
+      m68k_end_cycles = mcycles_vdp + ((s68k_run_cycles * MCYCLES_PER_LINE) / SCYCLES_PER_LINE);
+    }
+    else
+    {
+      /* default Main-CPU end cycle counter (end of line) */
+      m68k_end_cycles = cycles;
+    }
 
-      /* pending level 4 interrupt */
-      scd.pending |= (1 << 4);
+    /* run both CPU in sync until required cycle counters */
+    m68k_run(m68k_end_cycles);
+    s68k_run(scd.cycles + s68k_run_cycles);
 
-      /* level 4 interrupt enabled */
-      if (scd.regs[0x32>>1].byte.l & 0x10)
+    /* increment CD hardware cycle counter */
+    scd.cycles += s68k_run_cycles;
+
+    /* CDD processing at 75Hz (one clock = 12500000/75 = 500000/3 CPU clocks) */
+    cdd.cycles += (s68k_run_cycles * 3);
+    if (cdd.cycles >= (500000 * 4))
+    {
+      /* reload CDD cycle counter */
+      cdd.cycles -= (500000 * 4);
+
+      /* update CDD sector */
+      cdd_update();
+
+      /* check if CDD communication is enabled */
+      if (scd.regs[0x37>>1].byte.l & 0x04)
       {
-        /* update IRQ level */
-        s68k_update_irq((scd.pending & scd.regs[0x32>>1].byte.l) >> 1);
+        /* pending level 4 interrupt */
+        scd.pending |= (1 << 4);
+
+        /* level 4 interrupt enabled */
+        if (scd.regs[0x32>>1].byte.l & 0x10)
+        {
+          /* update IRQ level */
+          s68k_update_irq((scd.pending & scd.regs[0x32>>1].byte.l) >> 1);
+        }
+      }
+    }
+
+    /* Timer */
+    if (scd.timer)
+    {
+      /* decrement timer */
+      scd.timer -= s68k_run_cycles;
+      if (scd.timer <= 0)
+      {
+        /* reload timer (one timer clock = 384 CPU cycles) */
+        scd.timer += (scd.regs[0x30>>1].byte.l * TIMERS_SCYCLES_RATIO);
+
+        /* level 3 interrupt enabled ? */
+        if (scd.regs[0x32>>1].byte.l & 0x08)
+        {
+          /* trigger level 3 interrupt */
+          scd.pending |= (1 << 3);
+
+          /* update IRQ level */
+          s68k_update_irq((scd.pending & scd.regs[0x32>>1].byte.l) >> 1);
+        }
       }
     }
   }
+  while ((m68k.cycles < cycles) || (s68k.cycles < s68k_end_cycles));
 
-  /* Timer */
-  if (scd.timer)
+  /* update CDC DMA processing (if running) */
+  if (cdc.dma_w)
   {
-    /* decrement timer */
-    scd.timer -= SCYCLES_PER_LINE;
-    if (scd.timer <= 0)
-    {
-      /* reload timer (one timer clock = 384 CPU cycles) */
-      scd.timer += (scd.regs[0x30>>1].byte.l * TIMERS_SCYCLES_RATIO);
-
-      /* level 3 interrupt enabled ? */
-      if (scd.regs[0x32>>1].byte.l & 0x08)
-      {
-        /* trigger level 3 interrupt */
-        scd.pending |= (1 << 3);
-
-        /* update IRQ level */
-        s68k_update_irq((scd.pending & scd.regs[0x32>>1].byte.l) >> 1);
-      }
-    }
+    cdc_dma_update(scd.cycles);
   }
 
-  /* GFX processing */
+  /* update GFX processing (if started) */
   if (scd.regs[0x58>>1].byte.h & 0x80)
   {
-    /* update graphics operation if running */
     gfx_update(scd.cycles);
   }
 }
@@ -1702,9 +2001,11 @@ void scd_end_frame(unsigned int cycles)
   /* adjust Stopwatch counter for next frame (can be negative) */
   scd.stopwatch += (ticks * TIMERS_SCYCLES_RATIO) - cycles;
 
-  /* adjust SUB-CPU & GPU cycle counters for next frame */
-  s68k.cycles -= cycles;
-  gfx.cycles  -= cycles;
+  /* adjust SUB-CPU, GPU and CDC cycle counters for next frame */
+  s68k.cycles   -= cycles;
+  gfx.cycles    -= cycles;
+  cdc.cycles[0] -= cycles;
+  cdc.cycles[1] -= cycles;
 
   /* reset CPU registers polling */
   m68k.poll.cycle = 0;
@@ -1796,7 +2097,7 @@ int scd_context_save(uint8 *state)
   return bufferptr;
 }
 
-int scd_context_load(uint8 *state)
+int scd_context_load(uint8 *state, char *version)
 {
   int i;
   uint16 tmp16;
@@ -1818,7 +2119,7 @@ int scd_context_load(uint8 *state)
   bufferptr += cdc_context_load(&state[bufferptr]);
 
   /* CD Drive processor */
-  bufferptr += cdd_context_load(&state[bufferptr]);
+  bufferptr += cdd_context_load(&state[bufferptr], version);
 
   /* PCM chip */
   bufferptr += pcm_context_load(&state[bufferptr]);
@@ -1863,6 +2164,12 @@ int scd_context_load(uint8 *state)
       {
         /* Word-RAM 1 data mapped at $200000-$21FFFF */
         m68k.memory_map[i].base = scd.word_ram[1] + ((i & 0x01) << 16);
+        m68k.memory_map[i].read8   = NULL;
+        m68k.memory_map[i].read16  = NULL;
+        m68k.memory_map[i].write8  = NULL;
+        m68k.memory_map[i].write16 = NULL;
+        zbank_memory_map[i].read   = NULL;
+        zbank_memory_map[i].write  = NULL;
       }
 
       for (i=scd.cartridge.boot+0x22; i<scd.cartridge.boot+0x24; i++)
@@ -1903,6 +2210,12 @@ int scd_context_load(uint8 *state)
       {
         /* Word-RAM 0 data mapped at $200000-$21FFFF */
         m68k.memory_map[i].base = scd.word_ram[0] + ((i & 0x01) << 16);
+        m68k.memory_map[i].read8   = NULL;
+        m68k.memory_map[i].read16  = NULL;
+        m68k.memory_map[i].write8  = NULL;
+        m68k.memory_map[i].write16 = NULL;
+        zbank_memory_map[i].read   = NULL;
+        zbank_memory_map[i].write  = NULL;
       }
 
       for (i=scd.cartridge.boot+0x22; i<scd.cartridge.boot+0x24; i++)
@@ -1942,30 +2255,52 @@ int scd_context_load(uint8 *state)
     /* 2M mode */
     load_param(scd.word_ram_2M, sizeof(scd.word_ram_2M));
 
-    /* MAIN-CPU: $200000-$21FFFF is mapped to 256K Word-RAM (upper 128K) */
-    for (i=scd.cartridge.boot+0x20; i<scd.cartridge.boot+0x22; i++)
+    /* check RET bit */
+    if (scd.regs[0x03>>1].byte.l & 0x01)
     {
-      m68k.memory_map[i].base = scd.word_ram_2M + ((i & 0x03) << 16);
-    }
+      /* MAIN-CPU: $200000-$23FFFF is mapped to 256K Word-RAM */
+      for (i=scd.cartridge.boot+0x20; i<scd.cartridge.boot+0x24; i++)
+      {
+        m68k.memory_map[i].base    = scd.word_ram_2M + ((i & 0x03) << 16);
+        m68k.memory_map[i].read8   = NULL;
+        m68k.memory_map[i].read16  = NULL;
+        m68k.memory_map[i].write8  = NULL;
+        m68k.memory_map[i].write16 = NULL;
+        zbank_memory_map[i].read   = NULL;
+        zbank_memory_map[i].write  = NULL;
+      }
 
-    /* MAIN-CPU: $220000-$23FFFF is mapped to 256K Word-RAM (lower 128K) */
-    for (i=scd.cartridge.boot+0x22; i<scd.cartridge.boot+0x24; i++)
-    {
-      m68k.memory_map[i].read8   = NULL;
-      m68k.memory_map[i].read16  = NULL;
-      m68k.memory_map[i].write8  = NULL;
-      m68k.memory_map[i].write16 = NULL;
-      zbank_memory_map[i].read   = NULL;
-      zbank_memory_map[i].write  = NULL;
+      /* SUB-CPU: access to Word-RAM at $080000-$0BFFFF is locked (/DTACK not asserted)  */
+      for (i=0x08; i<0x0c; i++)
+      {
+        s68k.memory_map[i].read8   = s68k_lockup_r_8;
+        s68k.memory_map[i].read16  = s68k_lockup_r_16;
+        s68k.memory_map[i].write8  = s68k_lockup_w_8;
+        s68k.memory_map[i].write16 = s68k_lockup_w_16;
+      }
     }
-
-    /* SUB-CPU: $080000-$0BFFFF is mapped to 256K Word-RAM */
-    for (i=0x08; i<0x0c; i++)
+    else
     {
-      s68k.memory_map[i].read8   = NULL;
-      s68k.memory_map[i].read16  = NULL;
-      s68k.memory_map[i].write8  = NULL;
-      s68k.memory_map[i].write16 = NULL;
+      /* MAIN-CPU: $200000-$23FFFF is unmapped */
+      for (i=scd.cartridge.boot+0x20; i<scd.cartridge.boot+0x24; i++)
+      {
+        m68k.memory_map[i].base    = scd.word_ram_2M + ((i & 0x03) << 16);
+        m68k.memory_map[i].read8   = m68k_read_bus_8;
+        m68k.memory_map[i].read16  = m68k_read_bus_16;
+        m68k.memory_map[i].write8  = m68k_unused_8_w;
+        m68k.memory_map[i].write16 = m68k_unused_16_w;
+        zbank_memory_map[i].read   = zbank_unused_r;
+        zbank_memory_map[i].write  = zbank_unused_w;
+      }
+
+      /* SUB-CPU: access to Word-RAM at $080000-$0BFFFF is unlocked (/DTACK asserted) */
+      for (i=0x08; i<0x0c; i++)
+      {
+        s68k.memory_map[i].read8   = NULL;
+        s68k.memory_map[i].read16  = NULL;
+        s68k.memory_map[i].write8  = NULL;
+        s68k.memory_map[i].write16 = NULL;
+      }
     }
 
     /* SUB-CPU: $0C0000-$0DFFFF is unmapped */
@@ -2028,24 +2363,18 @@ int scd_68k_irq_ack(int level)
   error("INT ack level %d  (%X)\n", level, s68k.pc);
 #endif
 
-#if 0
-  /* level 5 interrupt is normally acknowledged by CDC */
-  if (level != 5)
-#endif
+  /* clear pending interrupt flag */
+  scd.pending &= ~(1 << level);
+
+  /* level 2 interrupt acknowledge */
+  if (level == 2)
   {
-    /* clear pending interrupt flag */
-    scd.pending &= ~(1 << level);
-
-    /* level 2 interrupt acknowledge */
-    if (level == 2)
-    {
-      /* clear IFL2 flag */
-      scd.regs[0x00].byte.h &= ~0x01;
-    }
-
-    /* update IRQ level */
-    s68k_update_irq((scd.pending & scd.regs[0x32>>1].byte.l) >> 1);
+    /* clear IFL2 flag */
+    scd.regs[0x00].byte.h &= ~0x01;
   }
+
+  /* update IRQ level */
+  s68k_update_irq((scd.pending & scd.regs[0x32>>1].byte.l) >> 1);
 
   return M68K_INT_ACK_AUTOVECTOR;
 }

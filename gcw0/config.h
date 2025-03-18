@@ -23,8 +23,11 @@ typedef struct
   uint8 hq_psg;
   uint8 ym2612;
   uint8 ym2413;
+  uint8 cd_latency;
   int16 psg_preamp;
   int16 fm_preamp;
+  int16 cdda_volume;
+  int16 pcm_volume;
   uint32 lp_range;
   int16 low_freq;
   int16 high_freq;
@@ -40,6 +43,7 @@ typedef struct
   uint8 addr_error;
   uint8 bios;
   uint8 lock_on;
+  uint8 add_on;
   uint8 hot_swap;
   uint8 invert_mouse;
   uint8 gun_cursor[2];
@@ -48,6 +52,8 @@ typedef struct
   uint8 ntsc;
   uint8 lcd;
   uint8 render;
+  uint8 enhanced_vscroll;
+  uint8 enhanced_vscroll_limit;
   t_input_config input[MAX_INPUTS];
   uint8 gcw0_fullscreen;
   uint8 gcw0_frameskip;

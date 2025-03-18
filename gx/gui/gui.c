@@ -3,7 +3,7 @@
  *
  *  generic GUI Engine (using GX rendering)
  *
- *  Copyright Eke-Eke (2009-2014)
+ *  Copyright Eke-Eke (2009-2021)
  *
  *  Redistribution and use of this code or any derivative works are permitted
  *  provided that the following conditions are met:
@@ -44,6 +44,8 @@
 #ifdef HW_RVL
 gx_texture *w_pointer;
 #endif
+
+gui_input m_input;
 
 u8 SILENT = 0;
 
@@ -810,7 +812,7 @@ int GUI_UpdateMenu(gui_menu *menu)
   /* update helper comment */
   if (menu->helpers[1])
   {
-    if ((menu->offset + selected) < max_items)
+    if ((selected < max_buttons) && ((menu->offset + selected) < max_items))
     {
       gui_item *item = &menu->items[menu->offset + selected];
       strcpy(menu->helpers[1]->comment,item->comment);
@@ -1800,9 +1802,9 @@ static void *MsgBox_Thread(gui_message *message_box)
 void GUI_MsgBoxUpdate(char *title, char *msg)
 {
   if (title)
-    strncpy(message_box.title,title,64);
+    strncpy(message_box.title,title,63);
   if (msg)
-    strncpy(message_box.msg,msg,64);
+    strncpy(message_box.msg,msg,63);
 }
 
 /* setup current Message Box */

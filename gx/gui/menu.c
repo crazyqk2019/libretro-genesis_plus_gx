@@ -3,7 +3,7 @@
  *
  *  Genesis Plus GX menu
  *
- *  Copyright Eke-Eke (2009-2019)
+ *  Copyright Eke-Eke (2009-2023)
  *
  *  Redistribution and use of this code or any derivative works are permitted
  *  provided that the following conditions are met:
@@ -54,82 +54,82 @@
 #include <ogc/lwp_watchdog.h>
 
 /* Credits */
-extern const u8 Bg_credits_png[];
+#include "Bg_credits_png.h"
 
 /* Main menu */
-extern const u8 Main_load_png[];
-extern const u8 Main_options_png[];
-extern const u8 Main_quit_png[];
-extern const u8 Main_file_png[];
-extern const u8 Main_reset_png[];
-extern const u8 Main_cheats_png[];
-extern const u8 Main_showinfo_png[];
-extern const u8 Main_takeshot_png[];
+#include "Main_load_png.h"
+#include "Main_options_png.h"
+#include "Main_quit_png.h"
+#include "Main_file_png.h"
+#include "Main_reset_png.h"
+#include "Main_cheats_png.h"
+#include "Main_showinfo_png.h"
+#include "Main_takeshot_png.h"
 #ifdef HW_RVL
-extern const u8 Main_play_wii_png[];
+#include "Main_play_wii_png.h"
 #else
-extern const u8 Main_play_gcn_png[];
+#include "Main_play_gcn_png.h"
 #endif
 
 /* Options menu */
-extern const u8 Option_menu_png[];
-extern const u8 Option_ctrl_png[];
-extern const u8 Option_sound_png[];
-extern const u8 Option_video_png[];
-extern const u8 Option_system_png[];
+#include "Option_menu_png.h"
+#include "Option_ctrl_png.h"
+#include "Option_sound_png.h"
+#include "Option_video_png.h"
+#include "Option_system_png.h"
 
 /* Load ROM menu */
-extern const u8 Load_recent_png[];
-extern const u8 Load_md_png[];
-extern const u8 Load_ms_png[];
-extern const u8 Load_gg_png[];
-extern const u8 Load_sg_png[];
-extern const u8 Load_cd_png[];
+#include "Load_recent_png.h"
+#include "Load_md_png.h"
+#include "Load_ms_png.h"
+#include "Load_gg_png.h"
+#include "Load_sg_png.h"
+#include "Load_cd_png.h"
 
 /* Save Manager menu */
-extern const u8 Button_load_png[];
-extern const u8 Button_load_over_png[];
-extern const u8 Button_save_png[];
-extern const u8 Button_save_over_png[];
-extern const u8 Button_special_png[];
-extern const u8 Button_special_over_png[];
-extern const u8 Button_delete_png[];
-extern const u8 Button_delete_over_png[];
+#include "Button_load_png.h"
+#include "Button_load_over_png.h"
+#include "Button_save_png.h"
+#include "Button_save_over_png.h"
+#include "Button_special_png.h"
+#include "Button_special_over_png.h"
+#include "Button_delete_png.h"
+#include "Button_delete_over_png.h"
 
 /* Controller Settings */
-extern const u8 Ctrl_4wayplay_png[];
-extern const u8 Ctrl_gamepad_png[];
-extern const u8 Ctrl_justifiers_png[];
-extern const u8 Ctrl_menacer_png[];
-extern const u8 Ctrl_mouse_png[];
-extern const u8 Ctrl_xe_1ap_png[];
-extern const u8 Ctrl_activator_png[];
-extern const u8 Ctrl_lightphaser_png[];
-extern const u8 Ctrl_paddle_png[];
-extern const u8 Ctrl_sportspad_png[];
-extern const u8 Ctrl_none_png[];
-extern const u8 Ctrl_teamplayer_png[];
-extern const u8 Ctrl_mastertap_png[];
-extern const u8 Ctrl_graphic_board_png[];
-extern const u8 Ctrl_pad_auto_png[];
-extern const u8 Ctrl_pad2b_png[];
-extern const u8 Ctrl_pad3b_png[];
-extern const u8 Ctrl_pad6b_png[];
-extern const u8 Ctrl_config_png[];
-extern const u8 ctrl_option_off_png[];
-extern const u8 ctrl_option_on_png[];
-extern const u8 ctrl_gamecube_png[];
+#include "Ctrl_4wayplay_png.h"
+#include "Ctrl_gamepad_png.h"
+#include "Ctrl_justifiers_png.h"
+#include "Ctrl_menacer_png.h"
+#include "Ctrl_mouse_png.h"
+#include "Ctrl_xe_1ap_png.h"
+#include "Ctrl_activator_png.h"
+#include "Ctrl_lightphaser_png.h"
+#include "Ctrl_paddle_png.h"
+#include "Ctrl_sportspad_png.h"
+#include "Ctrl_none_png.h"
+#include "Ctrl_teamplayer_png.h"
+#include "Ctrl_mastertap_png.h"
+#include "Ctrl_graphic_board_png.h"
+#include "Ctrl_pad_auto_png.h"
+#include "Ctrl_pad2b_png.h"
+#include "Ctrl_pad3b_png.h"
+#include "Ctrl_pad6b_png.h"
+#include "Ctrl_config_png.h"
+#include "ctrl_option_off_png.h"
+#include "ctrl_option_on_png.h"
+#include "ctrl_gamecube_png.h"
 #ifdef HW_RVL
-extern const u8 ctrl_classic_png[];
-extern const u8 ctrl_nunchuk_png[];
-extern const u8 ctrl_wiimote_png[];
-extern const u8 ctrl_wiiu_png[];
+#include "ctrl_classic_png.h"
+#include "ctrl_nunchuk_png.h"
+#include "ctrl_wiimote_png.h"
+#include "ctrl_wiiu_png.h"
 #endif
 
 /* Generic images */
-extern const u8 Button_sm_blue_png[];
-extern const u8 Button_sm_grey_png[];
-extern const u8 Button_sm_yellow_png[];
+#include "Button_sm_blue_png.h"
+#include "Button_sm_grey_png.h"
+#include "Button_sm_yellow_png.h"
 
 /* Exit callback */
 void (*reload)(void);
@@ -347,8 +347,10 @@ static gui_item items_audio[] =
   {NULL,NULL,"YM2612 Type: DISCRETE",    "Select YM2612 chip model",                             56,132,276,48},
   {NULL,NULL,"High-Quality FM: ON",      "Enable/Disable YM2612/YM2413 high-quality resampling", 56,132,276,48},
   {NULL,NULL,"High-Quality PSG: ON",     "Enable/Disable SN76489 high-quality resampling",       56,132,276,48},
-  {NULL,NULL,"FM Volume: 1.00",          "Adjust YM2612/YM2413 audio balance",                   56,132,276,48},
-  {NULL,NULL,"PSG Volume: 2.50",         "Adjust SN76489 audio balance",                         56,132,276,48},
+  {NULL,NULL,"FM Volume: 1.00",          "Adjust YM2612/YM2413 output mixing level",             56,132,276,48},
+  {NULL,NULL,"PSG Volume: 2.50",         "Adjust SN76489 output mixing level",                   56,132,276,48},
+  {NULL,NULL,"CD-DA Volume: 1.00",       "Adjust CD audio output mixing level",                  56,132,276,48},
+  {NULL,NULL,"PCM Volume: 1.00",         "Adjust CD hardware RF5C164 output mixing level",       56,132,276,48},
   {NULL,NULL,"Audio Output: STEREO",     "Select audio mixing output type",                      56,132,276,48},
   {NULL,NULL,"Filtering: 3-BAND EQ",     "Select audio filtering type",                          56,132,276,48},
   {NULL,NULL,"Low Gain: 1.00",           "Adjust EQ Low Band Gain",                              56,132,276,48},
@@ -363,32 +365,37 @@ static gui_item items_rompaths[] =
 {
   {NULL,NULL,"CD BIOS (USA): NOT FOUND",  "Select Sega CD (USA) BIOS",            56,132,276,48},
   {NULL,NULL,"CD BIOS (PAL): NOT FOUND",  "Select Mega CD (PAL) BIOS",            56,132,276,48},
-  {NULL,NULL,"CD BIOS (JAP): NOT FOUND",  "Select Mega CD (JAP) BIOS",            56,132,276,48},
-  {NULL,NULL,"MD BIOS (TMSS): NOT FOUND", "Select Mega Drive / Genesis BootROM",  56,132,276,48},
-  {NULL,NULL,"MS BIOS (USA): NOT FOUND",  "Select Master System (USA) BootROM",   56,132,276,48},
-  {NULL,NULL,"MS BIOS (PAL): NOT FOUND",  "Select Master System (PAL) BootROM",   56,132,276,48},
-  {NULL,NULL,"MS BIOS (JAP): NOT FOUND",  "Select Master System (JAP) BootROM",   56,132,276,48},
-  {NULL,NULL,"Game Gear BIOS: NOT FOUND", "Select Game Gear BootROM",             56,132,276,48},
+  {NULL,NULL,"CD BIOS (JAPAN): NOT FOUND","Select Mega CD (JAPAN) BIOS",          56,132,276,48},
+  {NULL,NULL,"MD BIOS (TMSS): NOT FOUND", "Select Mega Drive / Genesis Boot ROM", 56,132,276,48},
+  {NULL,NULL,"MS BIOS (USA): NOT FOUND",  "Select Master System (USA) Boot ROM",  56,132,276,48},
+  {NULL,NULL,"MS BIOS (PAL): NOT FOUND",  "Select Master System (PAL) Boot ROM",  56,132,276,48},
+  {NULL,NULL,"MS BIOS (JAPAN): NOT FOUND","Select Master System (JAPAN) Boot ROM",56,132,276,48},
+  {NULL,NULL,"Game Gear BIOS: NOT FOUND", "Select Game Gear Boot ROM",            56,132,276,48},
   {NULL,NULL,"Game Genie: NOT FOUND",     "Select Game Genie ROM",                56,132,276,48},
   {NULL,NULL,"Action Replay: NOT FOUND",  "Select Action Replay (Pro) ROM",       56,132,276,48},
-  {NULL,NULL,"S&K (2MB ROM): NOT FOUND",  "Select Sonic & Knuckle main ROM",      56,132,276,48},
-  {NULL,NULL,"S2&K (256K ROM): NOT FOUND","Select Sonic 2 & Knuckle upmem ROM",   56,132,276,48},
+  {NULL,NULL,"S&K (2MB): NOT FOUND",  "Select Sonic & Knuckle main ROM",      56,132,276,48},
+  {NULL,NULL,"S2&K (256KB): NOT FOUND","Select Sonic 2 & Knuckle upmem ROM",   56,132,276,48},
 };
 
 /* System options */
 static gui_item items_system[] =
 {
-  {NULL,NULL,"Console Hardware: AUTO",  "Select system hardware model",                56,132,276,48},
-  {NULL,NULL,"Console Region: AUTO",    "Select system region",                        56,132,276,48},
-  {NULL,NULL,"VDP Mode: AUTO",          "Select VDP mode",                             56,132,276,48},
-  {NULL,NULL,"System Clock: AUTO",      "Select system clock frequency",               56,132,276,48},
-  {NULL,NULL,"System Boot: BIOS&CART",  "Select system booting method",                56,132,276,48},
-  {NULL,NULL,"System Lockups: ON",      "Enable/Disable original system lock-ups",     56,132,276,48},
-  {NULL,NULL,"68k Address Error: ON",   "Enable/Disable 68k address error exceptions", 56,132,276,48},
-  {NULL,NULL,"Lock-on: OFF",            "Select Lock-On cartridge type",               56,132,276,48},
-  {NULL,NULL,"Cartridge Swap: OFF",     "Enable/Disable cartridge hot swap",           56,132,276,48},
-  {NULL,NULL,"BIOS & Lock-On ROM paths","Configure BIOS & Lock-On ROM paths",          56,132,276,48},
-  {NULL,NULL,"SVP Cycles: 1500",        "Adjust SVP chip emulation speed",             56,132,276,48}
+  {NULL,NULL,"System: MEGA DRIVE/GENESIS", "Select system hardware model",                56,132,276,48},
+  {NULL,NULL,"Region: JAPAN",              "Select system region",                        56,132,276,48},
+  {NULL,NULL,"VDP Mode: AUTO",             "Select VDP mode",                             56,132,276,48},
+  {NULL,NULL,"System Clock: AUTO",         "Select master clock frequency",               56,132,276,48},
+  {NULL,NULL,"System Boot: BIOS->CART",    "Select system booting method",                56,132,276,48},
+  {NULL,NULL,"System Lockups: OFF",        "Enable/Disable original system lockups",      56,132,276,48},
+  {NULL,NULL,"68k Address Error: OFF",     "Enable/Disable 68k address error exceptions", 56,132,276,48},
+  {NULL,NULL,"CD Access Time: OFF",        "Enable/Disable CD read/seek latency",         56,132,276,48},
+  {NULL,NULL,"CD Add-on: MEGA/SEGA CD",    "Select cartridge mode CD hardware add-on",    56,132,276,48},
+  {NULL,NULL,"Lock-On: SONIC&KNUCKLES",    "Select Lock-On cartridge type",               56,132,276,48},
+  {NULL,NULL,"Cartridge Swap: OFF",        "Enable/Disable cartridge hot swap",           56,132,276,48},
+  {NULL,NULL,"BIOS & Lock-On ROM paths",   "Configure Boot ROM & Lock-On ROM paths",      56,132,276,48},
+  {NULL,NULL,"Main 68k Overclock: 3.0x",   "Adjust Mega Drive /Genesis CPU clock speed",  56,132,276,48},
+  {NULL,NULL,"Sub 68k Overclock: 3.0x",    "Adjust Sega CD / Mega-CD CPU clock speed",    56,132,276,48},
+  {NULL,NULL,"Z80 Overclock: 3.0x",        "Adjust Z80 CPU clock speed",                  56,132,276,48},
+  {NULL,NULL,"SVP Cycles: 1500",           "Adjust SVP chip emulation speed",             56,132,276,48}
 };
 
 /* Video options */
@@ -894,6 +901,8 @@ static void soundmenu ()
   int ret, quit = 0;
   float fm_volume = (float)config.fm_preamp/100.0;
   float psg_volume = (float)config.psg_preamp/100.0;
+  float cdda_volume = (float)config.cdda_volume/100.0;
+  float pcm_volume = (float)config.pcm_volume/100.0;
   gui_menu *m = &menu_audio;
   gui_item *items = m->items;
 
@@ -910,8 +919,10 @@ static void soundmenu ()
 
   sprintf (items[4].text, "FM Volume: %1.2f", fm_volume);
   sprintf (items[5].text, "PSG Volume: %1.2f", psg_volume);
+  sprintf (items[6].text, "CD-DA Volume: %1.2f", cdda_volume);
+  sprintf (items[7].text, "PCM Volume: %1.2f", pcm_volume);
 
-  sprintf (items[6].text, "Audio Output: %s", config.mono ? "MONO":"STEREO");
+  sprintf (items[8].text, "Audio Output: %s", config.mono ? "MONO":"STEREO");
 
   if (config.filter == 2)
   {
@@ -919,27 +930,27 @@ static void soundmenu ()
     float mg = (float)config.mg/100.0;
     float hg = (float)config.hg/100.0;
 
-    sprintf(items[7].text, "Filtering: 3-BAND EQ");
-    sprintf(items[8].text, "Low Gain: %1.2f", lg);
-    strcpy(items[8].comment, "Adjust EQ Low Band Gain");
-    sprintf(items[9].text, "Middle Gain: %1.2f", mg);
-    sprintf(items[10].text, "High Gain: %1.2f", hg);
-    sprintf(items[11].text, "Low Freq: %d", config.low_freq);
-    sprintf(items[12].text, "High Freq: %d", config.high_freq);
-    m->max_items = 13;
+    sprintf(items[9].text, "Filtering: 3-BAND EQ");
+    sprintf(items[10].text, "Low Gain: %1.2f", lg);
+    strcpy(items[10].comment, "Adjust EQ Low Band Gain");
+    sprintf(items[11].text, "Middle Gain: %1.2f", mg);
+    sprintf(items[12].text, "High Gain: %1.2f", hg);
+    sprintf(items[13].text, "Low Freq: %d", config.low_freq);
+    sprintf(items[14].text, "High Freq: %d", config.high_freq);
+    m->max_items = 15;
   }
   else if (config.filter == 1)
   {
     int16 lp_range = (config.lp_range * 100 + 0xffff) / 0x10000;
-    sprintf (items[7].text, "Filtering: LOW-PASS");
-    sprintf (items[8].text, "Low-Pass Rate: %d %%", lp_range);
-    strcpy (items[8].comment, "Adjust Low Pass filter");
-    m->max_items = 9;
+    sprintf (items[9].text, "Filtering: LOW-PASS");
+    sprintf (items[10].text, "Low-Pass Rate: %d %%", lp_range);
+    strcpy (items[10].comment, "Adjust Low Pass filter");
+    m->max_items = 11;
   }
   else
   {
-    sprintf (items[7].text, "Filtering: OFF");
-    m->max_items = 8;
+    sprintf (items[9].text, "Filtering: OFF");
+    m->max_items = 10;
   }
 
   GUI_InitMenu(m);
@@ -1022,35 +1033,51 @@ static void soundmenu ()
 
       case 6:
       {
-        config.mono ^= 1;
-        sprintf (items[6].text, "Audio Out: %s", config.mono ? "MONO":"STEREO");
+        GUI_OptionBox(m,0,"CD-DA Volume",(void *)&cdda_volume,0.01,0.0,1.0,0);
+        sprintf (items[6].text, "CD-DA Volume: %1.2f", cdda_volume);
+        config.cdda_volume = (int)(cdda_volume * 100.0 + 0.5);
         break;
       }
 
       case 7:
       {
+        GUI_OptionBox(m,0,"PCM Volume",(void *)&pcm_volume,0.01,0.0,1.0,0);
+        sprintf (items[7].text, "PCM Volume: %1.2f", pcm_volume);
+        config.pcm_volume = (int)(pcm_volume * 100.0 + 0.5);
+        break;
+      }
+
+      case 8:
+      {
+        config.mono ^= 1;
+        sprintf (items[8].text, "Audio Out: %s", config.mono ? "MONO":"STEREO");
+        break;
+      }
+
+      case 9:
+      {
         config.filter = (config.filter + 1) % 3;
         if (config.filter == 2)
         {
           float lg = (float)config.lg/100.0;
-          sprintf (items[7].text, "Filtering: 3-BAND EQ");
-          sprintf (items[8].text, "Low Gain: %1.2f", lg);
-          strcpy (items[8].comment, "Adjust EQ Low Band Gain");
-          m->max_items = 13;
+          sprintf (items[9].text, "Filtering: 3-BAND EQ");
+          sprintf (items[10].text, "Low Gain: %1.2f", lg);
+          strcpy (items[10].comment, "Adjust EQ Low Band Gain");
+          m->max_items = 15;
           audio_set_equalizer();
         }
         else if (config.filter == 1)
         {
           int lp_range = (config.lp_range * 100 + 0xffff) / 0x10000;
-          sprintf (items[7].text, "Filtering: LOW-PASS");
-          sprintf (items[8].text, "Low-Pass Rate: %d %%", lp_range);
-          strcpy (items[8].comment, "Adjust Low Pass filter");
-          m->max_items = 9;
+          sprintf (items[9].text, "Filtering: LOW-PASS");
+          sprintf (items[10].text, "Low-Pass Rate: %d %%", lp_range);
+          strcpy (items[10].comment, "Adjust Low Pass filter");
+          m->max_items = 11;
         }
         else
         {
-          sprintf (items[7].text, "Filtering: OFF");
-          m->max_items = 8;
+          sprintf (items[9].text, "Filtering: OFF");
+          m->max_items = 10;
         }
 
         while ((m->offset + 4) > m->max_items)
@@ -1061,58 +1088,58 @@ static void soundmenu ()
         break;
       }
 
-      case 8:
+      case 10:
       {
         if (config.filter == 1)
         {
           int16 lp_range = (config.lp_range * 100 + 0xffff) / 0x10000;
           GUI_OptionBox(m,0,"Low-Pass Rate (%)",(void *)&lp_range,1,0,100,1);
-          sprintf (items[8].text, "Low-Pass Rate: %d %%", lp_range);
+          sprintf (items[10].text, "Low-Pass Rate: %d %%", lp_range);
           config.lp_range = (lp_range * 0x10000) / 100;
         }
         else
         {
           float lg = (float)config.lg/100.0;
           GUI_OptionBox(m,0,"Low Gain",(void *)&lg,0.01,0.0,2.0,0);
-          sprintf (items[8].text, "Low Gain: %1.2f", lg);
+          sprintf (items[10].text, "Low Gain: %1.2f", lg);
           config.lg = (int)(lg * 100.0);
           audio_set_equalizer();
         }
         break;
       }
 
-      case 9:
+      case 11:
       {
         float mg = (float)config.mg/100.0;
         GUI_OptionBox(m,0,"Middle Gain",(void *)&mg,0.01,0.0,2.0,0);
-        sprintf (items[9].text, "Middle Gain: %1.2f", mg);
+        sprintf (items[11].text, "Middle Gain: %1.2f", mg);
         config.mg = (int)(mg * 100.0);
-        audio_set_equalizer();
-        break;
-      }
-
-      case 10:
-      {
-        float hg = (float)config.hg/100.0;
-        GUI_OptionBox(m,0,"High Gain",(void *)&hg,0.01,0.0,2.0,0);
-        sprintf (items[10].text, "High Gain: %1.2f", hg);
-        config.hg = (int)(hg * 100.0);
-        audio_set_equalizer();
-        break;
-      }
-
-      case 11:
-      {
-        GUI_OptionBox(m,0,"Low Frequency",(void *)&config.low_freq,10,0,config.high_freq,1);
-        sprintf (items[11].text, "Low Freq: %d", config.low_freq);
         audio_set_equalizer();
         break;
       }
 
       case 12:
       {
+        float hg = (float)config.hg/100.0;
+        GUI_OptionBox(m,0,"High Gain",(void *)&hg,0.01,0.0,2.0,0);
+        sprintf (items[12].text, "High Gain: %1.2f", hg);
+        config.hg = (int)(hg * 100.0);
+        audio_set_equalizer();
+        break;
+      }
+
+      case 13:
+      {
+        GUI_OptionBox(m,0,"Low Frequency",(void *)&config.low_freq,10,0,config.high_freq,1);
+        sprintf (items[13].text, "Low Freq: %d", config.low_freq);
+        audio_set_equalizer();
+        break;
+      }
+
+      case 14:
+      {
         GUI_OptionBox(m,0,"High Frequency",(void *)&config.high_freq,100,config.low_freq,30000,1);
-        sprintf (items[12].text, "High Freq: %d", config.high_freq);
+        sprintf (items[14].text, "High Freq: %d", config.high_freq);
         audio_set_equalizer();
         break;
       }
@@ -1268,30 +1295,32 @@ static void systemmenu ()
   gui_item *items = m->items;
 
   if (config.system == 0)
-    sprintf (items[0].text, "Console Type: AUTO");
+    sprintf (items[0].text, "System: AUTO");
   else if (config.system == SYSTEM_SG)
-    sprintf (items[0].text, "Console Type: SG-1000");
+    sprintf (items[0].text, "System: SG-1000");
   else if (config.system == SYSTEM_SGII)
-    sprintf (items[0].text, "Console Type: SG-1000 II");
+    sprintf (items[0].text, "System: SG-1000 II");
+  else if (config.system == SYSTEM_SGII_RAM_EXT)
+    sprintf (items[0].text, "System: SG-1000 + RAM EXT.");
   else if (config.system == SYSTEM_MARKIII)
-    sprintf (items[0].text, "Console Type: MARK-III");
+    sprintf (items[0].text, "System: MARK-III");
   else if (config.system == SYSTEM_SMS)
-    sprintf (items[0].text, "Console Type: SMS");
+    sprintf (items[0].text, "System: MASTER SYSTEM");
   else if (config.system == SYSTEM_SMS2)
-    sprintf (items[0].text, "Console Type: SMS II");
+    sprintf (items[0].text, "System: MASTER SYSTEM II");
   else if (config.system == SYSTEM_GG)
-    sprintf (items[0].text, "Console Type: GG");
+    sprintf (items[0].text, "System: GAME GEAR");
   else if (config.system == SYSTEM_MD)
-    sprintf (items[0].text, "Console Type: MD");
+    sprintf (items[0].text, "System: MEGA DRIVE/GENESIS");
 
   if (config.region_detect == 0)
-    sprintf (items[1].text, "Console Region: AUTO");
+    sprintf (items[1].text, "Region: AUTO");
   else if (config.region_detect == 1)
-    sprintf (items[1].text, "Console Region: USA");
+    sprintf (items[1].text, "Region: USA");
   else if (config.region_detect == 2)
-    sprintf (items[1].text, "Console Region: PAL");
+    sprintf (items[1].text, "Region: PAL");
   else if (config.region_detect == 3)
-    sprintf (items[1].text, "Console Region: JAP");
+    sprintf (items[1].text, "Region: JAPAN");
 
   if (config.vdp_mode == 0)
     sprintf (items[2].text, "VDP Mode: AUTO");
@@ -1307,29 +1336,54 @@ static void systemmenu ()
   else if (config.master_clock == 2)
     sprintf (items[3].text, "System Clock: PAL");
 
-  sprintf (items[4].text, "System Boot: %s", (config.bios & 1) ? ((config.bios & 2) ? "BIOS&CART" : "BIOS ONLY") : "CART");
+  sprintf (items[4].text, "System Boot: %s", (config.bios & 1) ? ((config.bios & 2) ? "BIOS->CART" : "BIOS ONLY") : "CART");
   sprintf (items[5].text, "System Lockups: %s", config.force_dtack ? "OFF" : "ON");
   sprintf (items[6].text, "68k Address Error: %s", config.addr_error ? "ON" : "OFF");
+  sprintf (items[7].text, "CD Access Time: %s", config.cd_latency ? "ON" : "OFF");
+
+  if (config.add_on == HW_ADDON_AUTO)
+    sprintf (items[8].text, "CD Add-on: AUTO");
+  else if (config.add_on == HW_ADDON_MEGACD)
+    sprintf (items[8].text, "CD Add-on: MEGA/SEGA CD");
+  else if (config.add_on == HW_ADDON_MEGASD)
+    sprintf (items[8].text, "CD Add-on: MEGASD");
+  else
+    sprintf (items[8].text, "CD Add-on: NONE");
 
   if (config.lock_on == TYPE_GG)
-    sprintf (items[7].text, "Lock-On: GAME GENIE");
+    sprintf (items[9].text, "Lock-On: GAME GENIE");
   else if (config.lock_on == TYPE_AR)
-    sprintf (items[7].text, "Lock-On: ACTION REPLAY");
+    sprintf (items[9].text, "Lock-On: ACTION REPLAY");
   else if (config.lock_on == TYPE_SK)
-    sprintf (items[7].text, "Lock-On: SONIC&KNUCKLES");
+    sprintf (items[9].text, "Lock-On: SONIC&KNUCKLES");
   else
-    sprintf (items[7].text, "Lock-On: OFF");
+    sprintf (items[9].text, "Lock-On: OFF");
 
-  sprintf (items[8].text, "Cartridge Swap: %s", (config.hot_swap & 1) ? "ON":"OFF");
+  sprintf (items[10].text, "Cartridge Swap: %s", (config.hot_swap & 1) ? "ON":"OFF");
+
+  if (config.m68k_overclock > 1.0)
+    sprintf (items[12].text, "Main 68k Overclock: %1.1fx", config.m68k_overclock);
+  else
+    sprintf (items[12].text, "Main 68k Overclock: OFF");
+
+  if (config.s68k_overclock > 1.0)
+    sprintf (items[13].text, "Sub 68k Overclock: %1.1fx", config.s68k_overclock);
+  else
+    sprintf (items[13].text, "Sub 68k Overclock: OFF");
+
+  if (config.z80_overclock > 1.0)
+    sprintf (items[14].text, "Z80 Overclock: %1.1fx", config.z80_overclock);
+  else
+    sprintf (items[14].text, "Z80 Overclock: OFF");
 
   if (svp)
   {
-    sprintf (items[10].text, "SVP Cycles: %d", SVP_cycles);
-    m->max_items = 11;
+    sprintf (items[15].text, "SVP Cycles: %d", SVP_cycles);
+    m->max_items = 16;
   }
   else
   {
-    m->max_items = 10;
+    m->max_items = 15;
   }
 
   GUI_InitMenu(m);
@@ -1346,7 +1400,7 @@ static void systemmenu ()
         if (config.system == SYSTEM_MD)
         {
           config.system = 0;
-          sprintf (items[0].text, "Console Type: AUTO");
+          sprintf (items[0].text, "System: AUTO");
 
           /* Default system hardware (auto) */
           if (system_hw) system_hw = romtype;
@@ -1354,37 +1408,43 @@ static void systemmenu ()
         else if (config.system == 0)
         {
           config.system = SYSTEM_SG;
-          sprintf (items[0].text, "Console Type: SG-1000");
+          sprintf (items[0].text, "System: SG-1000");
           if (system_hw) system_hw = SYSTEM_SG;
         }
         else if (config.system == SYSTEM_SG)
         {
           config.system = SYSTEM_SGII;
-          sprintf (items[0].text, "Console Type: SG-1000 II");
+          sprintf (items[0].text, "System: SG-1000 II");
           if (system_hw) system_hw = SYSTEM_SGII;
         }
         else if (config.system == SYSTEM_SGII)
         {
+          config.system = SYSTEM_SGII_RAM_EXT;
+          sprintf (items[0].text, "System: SG-1000 + RAM EXT.");
+          if (system_hw) system_hw = SYSTEM_SGII_RAM_EXT;
+        }
+        else if (config.system == SYSTEM_SGII_RAM_EXT)
+        {
           config.system = SYSTEM_MARKIII;
-          sprintf (items[0].text, "Console Type: MARK-III");
+          sprintf (items[0].text, "System: MARK-III");
           if (system_hw) system_hw = SYSTEM_MARKIII;
         }
         else if (config.system == SYSTEM_MARKIII)
         {
           config.system = SYSTEM_SMS;
-          sprintf (items[0].text, "Console Type: SMS");
+          sprintf (items[0].text, "System: MASTER SYSTEM");
           if (system_hw) system_hw = SYSTEM_SMS;
         }
         else if (config.system == SYSTEM_SMS)
         {
           config.system = SYSTEM_SMS2;
-          sprintf (items[0].text, "Console Type: SMS II");
+          sprintf (items[0].text, "System: MASTER SYSTEM II");
           if (system_hw) system_hw = SYSTEM_SMS2;
         }
         else if (config.system == SYSTEM_SMS2)
         {
           config.system = SYSTEM_GG;
-          sprintf (items[0].text, "Console Type: GG");
+          sprintf (items[0].text, "System: GAME GEAR");
 
           if (romtype == SYSTEM_GG)
           {
@@ -1400,7 +1460,7 @@ static void systemmenu ()
         else if (config.system == SYSTEM_GG)
         {
           config.system = SYSTEM_MD;
-          sprintf (items[0].text, "Console Type: MD");
+          sprintf (items[0].text, "System: MEGA DRIVE/GENESIS");
 
           if (romtype & SYSTEM_MD)
           {
@@ -1444,13 +1504,13 @@ static void systemmenu ()
       {
         config.region_detect = (config.region_detect + 1) % 4;
         if (config.region_detect == 0)
-          sprintf (items[1].text, "Console Region: AUTO");
+          sprintf (items[1].text, "Region: AUTO");
         else if (config.region_detect == 1)
-          sprintf (items[1].text, "Console Region: USA");
+          sprintf (items[1].text, "Region: USA");
         else if (config.region_detect == 2)
-          sprintf (items[1].text, "Console Region: PAL");
+          sprintf (items[1].text, "Region: PAL");
         else if (config.region_detect == 3)
-          sprintf (items[1].text, "Console Region: JAP");
+          sprintf (items[1].text, "Region: JAPAN");
 
         /* force system reinitialization + region BIOS */
         reinit = 2;
@@ -1492,7 +1552,7 @@ static void systemmenu ()
         if (config.bios == 0) config.bios = 3;
         else if (config.bios == 3) config.bios = 1;
         else config.bios = 0;
-        sprintf (items[4].text, "System Boot: %s", (config.bios & 1) ? ((config.bios & 2) ? "BIOS&CART " : "BIOS ONLY") : "CART");
+        sprintf (items[4].text, "System Boot: %s", (config.bios & 1) ? ((config.bios & 2) ? "BIOS->CART " : "BIOS ONLY") : "CART");
         if ((system_hw == SYSTEM_MD) || (system_hw & SYSTEM_GG) || (system_hw & SYSTEM_SMS))
         {
           /* force hard reset */
@@ -1520,17 +1580,38 @@ static void systemmenu ()
         break;
       }
 
-      case 7:  /*** Cart Lock-On ***/
+      case 7:  /*** CD Access Time ***/
+      {
+        config.cd_latency ^= 1;
+        sprintf (items[7].text, "CD Access Time: %s", config.cd_latency ? "ON" : "OFF");
+        break;
+      }
+
+      case 8:  /*** CD add-on ***/
+      {
+        config.add_on = (config.add_on + 1) % (HW_ADDON_NONE + 1);
+        if (config.add_on == HW_ADDON_AUTO)
+          sprintf (items[8].text, "CD Add-on: AUTO");
+        else if (config.add_on == HW_ADDON_MEGACD)
+          sprintf (items[8].text, "CD Add-on: MEGA/SEGA CD");
+        else if (config.add_on == HW_ADDON_MEGASD)
+          sprintf (items[8].text, "CD Add-on: MEGASD");
+        else
+          sprintf (items[8].text, "CD Add-on: NONE");
+        break;
+      }
+
+      case 9:  /*** Cart Lock-On ***/
       {
         config.lock_on = (config.lock_on + 1) % (TYPE_SK + 1);
         if (config.lock_on == TYPE_GG)
-          sprintf (items[7].text, "Lock-On: GAME GENIE");
+          sprintf (items[9].text, "Lock-On: GAME GENIE");
         else if (config.lock_on == TYPE_AR)
-          sprintf (items[7].text, "Lock-On: ACTION REPLAY");
+          sprintf (items[9].text, "Lock-On: ACTION REPLAY");
         else if (config.lock_on == TYPE_SK)
-          sprintf (items[7].text, "Lock-On: SONIC&KNUCKLES");
+          sprintf (items[9].text, "Lock-On: SONIC&KNUCKLES");
         else
-          sprintf (items[7].text, "Lock-On: OFF");
+          sprintf (items[9].text, "Lock-On: OFF");
 
         if ((system_hw == SYSTEM_MD) || (system_hw == SYSTEM_PICO))
         {
@@ -1564,14 +1645,14 @@ static void systemmenu ()
         break;
       }
 
-      case 8:  /*** Cartridge Hot Swap ***/
+      case 10:  /*** Cartridge Hot Swap ***/
       {
         config.hot_swap ^= 1;
-        sprintf (items[8].text, "Cartridge Swap: %s", (config.hot_swap & 1) ? "ON":"OFF");
+        sprintf (items[10].text, "Cartridge Swap: %s", (config.hot_swap & 1) ? "ON":"OFF");
         break;
       }
 
-      case 9:  /*** System ROM paths ***/
+      case 11:  /*** System ROM paths ***/
       {
         GUI_DeleteMenu(m);
         rompathmenu();
@@ -1579,10 +1660,40 @@ static void systemmenu ()
         break;
       }
 
-      case 10:  /*** SVP cycles per line ***/
+      case 12:  /*** Main 68k Overclock ***/
+      {
+        GUI_OptionBox(m,0,"Main 68k Overclock Ratio",(void *)&config.m68k_overclock,0.1,1.0,7.0,0);
+        if (config.m68k_overclock > 1.0)
+          sprintf (items[12].text, "Main 68k Overclock: %1.1fx", config.m68k_overclock);
+        else
+          sprintf (items[12].text, "Main 68k Overclock: OFF");
+        break;
+      }
+
+      case 13:  /*** Sub 68k Overclock ***/
+      {
+        GUI_OptionBox(m,0,"Sub 68k Overclock Ratio",(void *)&config.s68k_overclock,0.1,1.0,4.0,0);
+        if (config.s68k_overclock > 1.0)
+          sprintf (items[13].text, "Sub 68k Overclock: %1.1fx", config.s68k_overclock);
+        else
+          sprintf (items[13].text, "Sub 68k Overclock: OFF");
+        break;
+      }
+
+      case 14:  /*** Z80 Overclock ***/
+      {
+        GUI_OptionBox(m,0,"Z80 Overclock Ratio",(void *)&config.z80_overclock,0.1,1.0,15.0,0);
+        if (config.z80_overclock > 1.0)
+          sprintf (items[14].text, "Z80 Overclock: %1.1fx", config.z80_overclock);
+        else
+          sprintf (items[14].text, "Z80 Overclock: OFF");
+        break;
+      }
+
+      case 15:  /*** SVP cycles per line ***/
       {
         GUI_OptionBox(m,0,"SVP Cycles",(void *)&SVP_cycles,1,1,1500,1);
-        sprintf (items[10].text, "SVP Cycles: %d", SVP_cycles);
+        sprintf (items[15].text, "SVP Cycles: %d", SVP_cycles);
         break;
       }
 
@@ -1651,6 +1762,11 @@ static void systemmenu ()
       }
     }
   }
+
+  /* Initialize CPU overclock ratio */
+  m68k.cycle_ratio = (100 << M68K_OVERCLOCK_SHIFT) / (int)(config.m68k_overclock * 100.0);
+  s68k.cycle_ratio = (100 << M68K_OVERCLOCK_SHIFT) / (int)(config.s68k_overclock * 100.0);
+  z80_cycle_ratio  = (100 << Z80_OVERCLOCK_SHIFT) / (int)(config.z80_overclock * 100.0);
 
   GUI_DeleteMenu(m);
 }
@@ -1979,27 +2095,27 @@ static void videomenu ()
       }
 
       case VI_OFFSET+2: /*** NTSC Sharpness ***/
-        GUI_OptionBox(m,update_bgm,"NTSC Sharpness",(void *)&config.ntsc_sharpness,0.01,-1.0,1.0,0);
+        GUI_OptionBox(m,0,"NTSC Sharpness",(void *)&config.ntsc_sharpness,0.01,-1.0,1.0,0);
         sprintf(items[VI_OFFSET+2].text, "NTSC Sharpness: %1.2f", config.ntsc_sharpness);
         break;
 
       case VI_OFFSET+3: /*** NTSC Resolution ***/
-        GUI_OptionBox(m,update_bgm,"NTSC Resolution",(void *)&config.ntsc_resolution,0.01,0.0,1.0,0);
+        GUI_OptionBox(m,0,"NTSC Resolution",(void *)&config.ntsc_resolution,0.01,0.0,1.0,0);
         sprintf(items[VI_OFFSET+3].text, "NTSC Resolution: %1.2f", config.ntsc_resolution);
         break;
 
       case VI_OFFSET+4: /*** NTSC Artifacts ***/
-        GUI_OptionBox(m,update_bgm,"NTSC Artifacts",(void *)&config.ntsc_artifacts,0.01,-1.0,0.0,0);
+        GUI_OptionBox(m,0,"NTSC Artifacts",(void *)&config.ntsc_artifacts,0.01,-1.0,0.0,0);
         sprintf(items[VI_OFFSET+4].text, "NTSC Artifacts: %1.2f", config.ntsc_artifacts);
         break;
 
       case VI_OFFSET+5: /*** NTSC Color Bleed ***/
-        GUI_OptionBox(m,update_bgm,"NTSC Color Bleed",(void *)&config.ntsc_bleed,0.01,-1.0,1.0,0);
+        GUI_OptionBox(m,0,"NTSC Color Bleed",(void *)&config.ntsc_bleed,0.01,-1.0,1.0,0);
         sprintf(items[VI_OFFSET+5].text, "NTSC Color Bleed: %1.2f", config.ntsc_bleed);
         break;
 
       case VI_OFFSET+6: /*** NTSC Color Fringing ***/
-        GUI_OptionBox(m,update_bgm,"NTSC Color Fringing",(void *)&config.ntsc_fringing,0.01,-1.0,1.0,0);
+        GUI_OptionBox(m,0,"NTSC Color Fringing",(void *)&config.ntsc_fringing,0.01,-1.0,1.0,0);
         sprintf(items[VI_OFFSET+6].text, "NTSC Color Fringing: %1.2f", config.ntsc_fringing);
         break;
 

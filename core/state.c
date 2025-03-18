@@ -2,7 +2,7 @@
  *  Genesis Plus
  *  Savestate support
  *
- *  Copyright (C) 2007-2016  Eke-Eke (Genesis Plus GX)
+ *  Copyright (C) 2007-2021  Eke-Eke (Genesis Plus GX)
  *
  *  Redistribution and use of this code or any derivative works are permitted
  *  provided that the following conditions are met:
@@ -154,7 +154,7 @@ int state_load(unsigned char *state)
     load_param(&tmp32, 4); m68k_set_reg(M68K_REG_USP,tmp32);
     load_param(&tmp32, 4); m68k_set_reg(M68K_REG_ISP,tmp32);
 
-  	load_param(&m68k.cycles, sizeof(m68k.cycles));
+    load_param(&m68k.cycles, sizeof(m68k.cycles));
     load_param(&m68k.int_level, sizeof(m68k.int_level));
     load_param(&m68k.stopped, sizeof(m68k.stopped));
   }
@@ -178,7 +178,7 @@ int state_load(unsigned char *state)
     }
 
     /* CD hardware */
-    bufferptr += scd_context_load(&state[bufferptr]);
+    bufferptr += scd_context_load(&state[bufferptr], version);
   }
   else if ((system_hw & SYSTEM_PBC) == SYSTEM_MD)
   {  
@@ -202,7 +202,7 @@ int state_save(unsigned char *state)
 
   /* version string */
   char version[16];
-  strncpy(version,STATE_VERSION,16);
+  memcpy(version,STATE_VERSION,16);
   save_param(version, 16);
 
   /* GENESIS */
@@ -265,8 +265,8 @@ int state_save(unsigned char *state)
   if (system_hw == SYSTEM_MCD)
   {
     /* CD hardware ID flag */
-    char id[5];
-    strncpy(id,"SCD!",4);
+    char id[4];
+    memcpy(id,"SCD!",4);
     save_param(id, 4);
 
     /* CD hardware */

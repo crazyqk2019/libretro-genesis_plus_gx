@@ -3,7 +3,7 @@
  *
  *  Genesis Plus GX video & rendering support
  *
- *  Copyright Eke-Eke (2007-2016), based on original work from Softdev (2006)
+ *  Copyright Eke-Eke (2007-2023), based on original work from Softdev (2006)
  *
  *  Redistribution and use of this code or any derivative works are permitted
  *  provided that the following conditions are met:
@@ -51,14 +51,14 @@ typedef struct
 {
   u8 *buffer;
   u32 offset;
-} png_image;
+} png_image_desc;
 
-extern const u8 Crosshair_p1_png[];
-extern const u8 Crosshair_p2_png[];
-extern const u8 CD_access_off_png[];
-extern const u8 CD_access_on_png[];
-extern const u8 CD_ready_off_png[];
-extern const u8 CD_ready_on_png[];
+#include "Crosshair_p1_png.h"
+#include "Crosshair_p2_png.h"
+#include "CD_access_off_png.h"
+#include "CD_access_on_png.h"
+#include "CD_ready_off_png.h"
+#include "CD_ready_on_png.h"
 
 /*** VI Mode ***/
 GXRModeObj *vmode;
@@ -1019,22 +1019,19 @@ void gxCopyScreenshot(gx_texture *texture)
   GX_Color4u8(0xff,0xff,0xff,0xff);
   GX_TexCoord2f32(0.0, 0.0);
   GX_End();
+  GX_DrawDone();
 
   /* copy EFB to texture */
   GX_SetTexCopySrc(0, 0, texture->width * 2, texture->height * 2);
   GX_SetTexCopyDst(texture->width, texture->height, texture->format, GX_TRUE);
-  GX_DrawDone();
   GX_CopyTex(texture->data, GX_TRUE);
   GX_Flush();
 
   /* wait for copy operation to finish */
-  /* GX_PixModeSync is only useful if GX_ command follows */
-  /* we use dummy GX commands to stall CPU execution */
   GX_PixModeSync();
-  GX_LoadTexObj(&screenTexObj, GX_TEXMAP0);
-  GX_InvalidateTexAll();
-  GX_Flush();
-  DCStoreRange(texture->data, texture->width * texture->height * 4);
+
+  /* invalidate data cache area corresponding to texture RAM address */
+  DCInvalidateRange(texture->data, texture->width * texture->height * 4);
 }
 
 /* Take Screenshot */
@@ -1084,7 +1081,7 @@ void gxClearScreen(GXColor color)
 /* libpng read callback function */
 static void png_read_from_mem (png_structp png_ptr, png_bytep data, png_size_t length)
 {
-  png_image *image = (png_image *)png_get_io_ptr(png_ptr);
+  png_image_desc *image = (png_image_desc *)png_get_io_ptr(png_ptr);
 
   /* copy data from image buffer */
   memcpy (data, image->buffer + image->offset, length);
@@ -1113,7 +1110,7 @@ gx_texture *gxTextureOpenPNG(const u8 *png_data, FILE *png_file)
   if (png_data)
   {
     /* init PNG image structure */
-    png_image image;
+    png_image_desc image;
     image.buffer = (u8 *) png_data;
     image.offset = 0;
 
@@ -1888,6 +1885,9 @@ void gx_video_Init(void)
   /* Configure VI */
   VIDEO_Configure(vmode);
 
+  /* Initialize font first (to ensure IPL font buffer is allocated in MEM1 as DMA from EXI bus to MEM2 is apparently not possible) */
+  FONT_Init();
+
   /* Allocate framebuffers */
   xfb[0] = (u32 *) MEM_K0_TO_K1((u32 *) SYS_AllocateFramebuffer(&TV50hz_576i));
   xfb[1] = (u32 *) MEM_K0_TO_K1((u32 *) SYS_AllocateFramebuffer(&TV50hz_576i));
@@ -1916,9 +1916,6 @@ void gx_video_Init(void)
   gxStart();
   gxResetRendering(1);
   gxResetMode(vmode, GX_TRUE);
-
-  /* Initialize FONT */
-  FONT_Init();
 }
 
 void gx_video_Shutdown(void)

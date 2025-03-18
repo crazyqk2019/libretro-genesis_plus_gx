@@ -20,6 +20,9 @@
 /*
 **  CHANGELOG:
 **
+** 11-05-2021 Eke-Eke (Genesis Plus GX):
+**  - fixed potential issue with SSG-EG inverted attenuation level on Key OFF
+**
 ** 03-12-2017 Eke-Eke (Genesis Plus GX):
 **  - improved 9-bit DAC emulation accuracy
 **  - added discrete YM2612 DAC distortion emulation ("ladder effect")
@@ -684,7 +687,7 @@ INLINE void FM_KEYOFF(FM_CH *CH , int s )
       {
         /* convert EG attenuation level */
         if (SLOT->ssgn ^ (SLOT->ssg&0x04))
-          SLOT->volume = (0x200 - SLOT->volume);
+          SLOT->volume = (0x200 - SLOT->volume) & MAX_ATT_INDEX;
 
         /* force EG attenuation level */
         if (SLOT->volume >= 0x200)
@@ -749,7 +752,7 @@ INLINE void FM_KEYOFF_CSM(FM_CH *CH , int s )
       {
         /* convert EG attenuation level */
         if (SLOT->ssgn ^ (SLOT->ssg&0x04))
-          SLOT->volume = (0x200 - SLOT->volume);
+          SLOT->volume = (0x200 - SLOT->volume) & MAX_ATT_INDEX;
 
         /* force EG attenuation level */
         if (SLOT->volume >= 0x200)
@@ -776,7 +779,7 @@ INLINE void CSMKeyControll(FM_CH *CH)
   ym2612.OPN.SL3.key_csm = 1;
 }
 
-INLINE void INTERNAL_TIMER_A()
+INLINE void INTERNAL_TIMER_A(void)
 {
   if (ym2612.OPN.ST.mode & 0x01)
   {
@@ -1031,7 +1034,7 @@ INLINE void set_sl_rr(FM_SLOT *SLOT,int v)
 }
 
 /* advance LFO to next sample */
-INLINE void advance_lfo()
+INLINE void advance_lfo(void)
 {
   if (ym2612.OPN.lfo_timer_overflow)   /* LFO enabled ? */
   {
@@ -2089,6 +2092,16 @@ void YM2612Update(int *buffer, int length)
     else if (out_fm[4] < -8192) out_fm[4] = -8192;
     if (out_fm[5] > 8191) out_fm[5] = 8191;
     else if (out_fm[5] < -8192) out_fm[5] = -8192;
+    
+    #ifdef USE_PER_SOUND_CHANNELS_CONFIG
+        /* apply user volume scaling */
+        if (config.md_ch_volumes[0] < 100) out_fm[0] = (out_fm[0] * config.md_ch_volumes[0]) / 100;
+        if (config.md_ch_volumes[1] < 100) out_fm[1] = (out_fm[1] * config.md_ch_volumes[1]) / 100;
+        if (config.md_ch_volumes[2] < 100) out_fm[2] = (out_fm[2] * config.md_ch_volumes[2]) / 100;
+        if (config.md_ch_volumes[3] < 100) out_fm[3] = (out_fm[3] * config.md_ch_volumes[3]) / 100;
+        if (config.md_ch_volumes[4] < 100) out_fm[4] = (out_fm[4] * config.md_ch_volumes[4]) / 100;
+        if (config.md_ch_volumes[5] < 100) out_fm[5] = (out_fm[5] * config.md_ch_volumes[5]) / 100;
+    #endif
 
     /* stereo DAC output panning & mixing  */
     lt  = ((out_fm[0]) & ym2612.OPN.pan[0]);

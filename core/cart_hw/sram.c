@@ -2,7 +2,7 @@
  *  Genesis Plus
  *  Backup RAM support
  *
- *  Copyright (C) 2007-2019  Eke-Eke (Genesis Plus GX)
+ *  Copyright (C) 2007-2024  Eke-Eke (Genesis Plus GX)
  *
  *  Redistribution and use of this code or any derivative works are permitted
  *  provided that the following conditions are met:
@@ -59,13 +59,10 @@ T_SRAM sram;
  *
  * Assuming max. 64k backup RAM throughout
  ****************************************************************************/
-void sram_init()
+void sram_init(void)
 {
-  memset(&sram, 0, sizeof (T_SRAM));
-
-  /* backup RAM data is stored above cartridge ROM area, at $800000-$80FFFF (max. 64K) */
-  if (cart.romsize > 0x800000) return;
-  sram.sram = cart.rom + 0x800000;
+  /* disable Backup RAM by default */
+  sram.detected = sram.on = sram.custom = sram.start = sram.end = 0;
 
   /* initialize Backup RAM */
   if (strstr(rominfo.international,"Sonic 1 Remastered"))
@@ -102,16 +99,25 @@ void sram_init()
       sram.end = 0x203fff;
     }
 
-    /* fixe games indicating internal RAM as volatile external RAM (Feng Kuang Tao Hua Yuan) */
+    /* fixes games indicating internal RAM as volatile external RAM (Feng Kuang Tao Hua Yuan) */
     else if (sram.start == 0xff0000)
     {
       /* backup RAM should be disabled */
       sram.on = 0;
     }
 
-    /* fixe other bad header informations */
+    /* fixes games with invalid SRAM start address */
+    else if (sram.start >= 0x800000)
+    {
+      /* forces 64KB static RAM mapped to $200000-$20ffff (default) */
+      sram.start = 0x200000;
+      sram.end = 0x20ffff;
+    }
+
+    /* fixes games with invalid SRAM end address */
     else if ((sram.start > sram.end) || ((sram.end - sram.start) >= 0x10000))
     {
+      /* forces 64KB static RAM max */
       sram.end = sram.start + 0xffff;
     }
   }
@@ -146,6 +152,13 @@ void sram_init()
       sram.on = 1;
       sram.start = 0x400001;
       sram.end = 0x40ffff;
+    }
+    else if ((rominfo.checksum == 0x0000) && (rominfo.realchecksum == 0x1f7f) && (READ_BYTE(cart.rom + 0x80000,0x1b0) == 0x52) && (READ_BYTE(cart.rom + 0x80000,0x1b1) == 0x41))
+    {
+      /* Radica - Sensible Soccer Plus edition (use bankswitching) */
+      sram.on = 1;
+      sram.start = 0x200001;
+      sram.end = 0x203fff;
     }
     else if ((strstr(rominfo.ROMType,"SF") != NULL) && (strstr(rominfo.product,"001") != NULL))
     {
